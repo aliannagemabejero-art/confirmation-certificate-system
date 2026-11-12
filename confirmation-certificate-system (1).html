@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+  ============================================================
+  CONFIRMATION CERTIFICATION WORKSPACE — v0.9 (record actions)
+  ============================================================
+  A self-contained, single-file web application for Divine Mercy
+  Parish — one connected workflow:
+
+    Dashboard / Workspace
+      → Create Confirmation List (modal — opens the new list)
+      → Certificate Workspace (alphabetical by full name)
+      → + New Certificate → Certificate Encoding Form
+      → SAVE — the certificate record is saved permanently
+      → Certificate Preview → EXPORT TO WORD | EDIT | DELETE | PRINT
+
+  v0.9 adds certificate record actions to the existing build —
+  no structural or visual redesign:
+    • SAVE stores the record permanently before anything is
+      printed; printing stays optional.
+    • The Certificate Workspace lists saved certificates
+      alphabetically, showing only the confirmand's full name.
+    • The Certificate Preview gains EXPORT TO WORD (a real .docx
+      generated in the browser from the saved record — nothing is
+      re-encoded) and DELETE (confirmation first, then the record
+      is removed and the workspace is shown). EDIT and PRINT keep
+      working exactly as before.
+    • ONE saved record per confirmand serves preview, edit,
+      delete, print and export — no copies, no parallel data.
+    • The parish certificate template remains exactly as it was.
+
+  Deliberately NOT included yet: a database backend.
+
+  STRUCTURE
+    1. <style>  — light theme tokens, header, hub, cards, modal,
+                  encoding screen, certificate preview & print
+    2. Markup   — top header, app shell, create-list modal, footer
+    3. <script> — config, storage, icons, shared builders,
+                  screens (hub / workspace / encode / preview),
+                  record actions (.docx export, delete),
+                  modal, router, init
+  ============================================================
+-->
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Confirmation Certification Workspace · Divine Mercy Parish</title>
+<style>
+/* ---- 1a. Design tokens (light administrative theme) --------- */
+:root {
+  color-scheme: light;
+  --bg: #F3F5F8;
+  --surface: #FFFFFF;
+  --surface-2: #EEF1F5;
+  --border: rgba(100, 116, 139, 0.22);
+  --border-strong: rgba(100, 116, 139, 0.38);
+  --text: #1F2A3C;
+  --muted: #5D6B7E;
+
+  --accent: #C9A227;
+  --accent-bright: #A98614;
+  --accent-soft: rgba(201, 162, 39, 0.13);
+
+  --success: #15803D;
+  --success-bg: rgba(34, 197, 94, 0.14);
+  --warning: #B45309;
+  --warning-bg: rgba(217, 119, 6, 0.13);
+  --neutral-bg: rgba(100, 116, 139, 0.12);
+  --neutral-fg: #475569;
+  --danger: #DC2626;
+
+  --font-heading: Georgia, 'Times New Roman', serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --shadow-card: 0 10px 24px rgba(16, 24, 40, 0.10);
+}
+
+/* ---- 1b. Base & reset ------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text);
+  background:
+    radial-gradient(1100px 420px at 18% -10%, rgba(201, 162, 39, 0.07), transparent 60%),
+    var(--bg);
+  min-height: 100vh;
+}
+h1, h2, h3 { font-family: var(--font-heading); color: var(--text); margin: 0; font-weight: 700; }
+p { margin: 0; }
+a { color: var(--accent-bright); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+::placeholder { color: rgba(93, 107, 126, 0.6); }
+
+/* ---- 1c. Top header ---------------------------------------- */
+.topbar {
+  position: sticky; top: 0; z-index: 30;
+  display: flex; align-items: center; gap: 14px;
+  height: 68px; padding: 0 28px;
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+.brand { display: flex; align-items: center; gap: 13px; min-width: 0; }
+.brand-name { display: block; font-family: var(--font-heading); font-size: 17px; font-weight: 700; line-height: 1.2; color: var(--text); white-space: nowrap; }
+.brand-sub {
+  display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--accent-bright); margin-top: 3px; white-space: nowrap;
+}
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+.user-chip { display: flex; align-items: center; gap: 10px; font-size: 13.5px; font-weight: 600; color: var(--muted); }
+.avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--accent-soft); color: var(--accent-bright);
+  display: grid; place-items: center; font-family: var(--font-heading); font-weight: 700;
+  border: 1px solid rgba(201, 162, 39, 0.35);
+}
+
+/* ---- 1d. Layout --------------------------------------------- */
+.content { width: 100%; max-width: 1160px; margin: 0 auto; padding: 34px 28px 20px; }
+.footer { padding: 10px 28px 30px; text-align: center; font-size: 12.5px; color: rgba(93, 107, 126, 0.85); }
+
+/* View transitions — every navigation re-runs the cascade. */
+@keyframes view-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+.page-enter > * { animation: view-in 0.3s ease backwards; }
+.page-enter > :nth-child(2) { animation-delay: 55ms; }
+.page-enter > :nth-child(3) { animation-delay: 110ms; }
+.page-enter > :nth-child(4) { animation-delay: 165ms; }
+.page-enter > :nth-child(n+5) { animation-delay: 200ms; }
+@media (prefers-reduced-motion: reduce) {
+  .page-enter > *, .modal { animation: none; }
+  .list-card, .btn, .back-link { transition: none; }
+}
+
+/* ---- 1e. Hub components ------------------------------------ */
+.page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.page-header h1 { font-size: 27px; letter-spacing: 0.01em; }
+
+.search-box { position: relative; max-width: 520px; margin: 20px 0 24px; }
+.search-box svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.search-box input {
+  width: 100%; height: 44px; font: inherit; color: var(--text);
+  padding: 0 16px 0 42px;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.search-box input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.22); }
+
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
+.stat-card {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+  padding: 16px 18px;
+}
+.stat-chip {
+  flex: none; width: 42px; height: 42px; border-radius: 10px;
+  display: grid; place-items: center;
+  background: var(--accent-soft); color: var(--accent-bright);
+}
+.stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); }
+.stat-value { font-family: var(--font-heading); font-size: 24px; line-height: 1.15; color: var(--text); margin-top: 1px; }
+
+.lists-bar { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+.lists-label { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.13em; color: var(--muted); }
+.count-pill {
+  min-width: 22px; padding: 1px 7px; border-radius: 999px; text-align: center;
+  font-size: 11.5px; font-weight: 700; background: var(--accent-soft); color: var(--accent-bright);
+}
+
+/* ---- Confirmation list cards (the focus of the page) -------- */
+.lists-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; }
+.list-card {
+  display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+  padding: 20px; text-decoration: none; color: var(--text);
+  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.list-card:hover { transform: translateY(-3px); border-color: rgba(201, 162, 39, 0.55); box-shadow: var(--shadow-card); }
+.list-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.list-chip {
+  width: 40px; height: 40px; border-radius: 10px; flex: none;
+  display: grid; place-items: center;
+  background: var(--accent-soft); color: var(--accent-bright);
+}
+.list-card-top .count-pill { margin-left: auto; }
+.list-arrow { color: var(--muted); display: grid; place-items: center; transition: transform 0.18s ease, color 0.18s ease; }
+.list-card:hover .list-arrow { transform: translateX(3px); color: var(--accent-bright); }
+.list-title { font-size: 18.5px; letter-spacing: 0.01em; }
+.list-org { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); margin-top: 5px; }
+.list-date { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); margin-top: 4px; }
+.list-date svg { color: var(--accent-bright); opacity: 0.9; flex: none; }
+.list-date-val { color: var(--text); font-weight: 600; }
+.list-divider { height: 1px; background: var(--border); margin: 15px 0 13px; }
+.list-nums { display: flex; gap: 30px; }
+.num-block { display: flex; flex-direction: column; }
+.num { font-family: var(--font-heading); font-size: 21px; line-height: 1.1; color: var(--text); }
+.num-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--muted); margin-top: 3px; }
+
+/* Empty states — brand-new system, or no search results. */
+.hub-empty {
+  display: none; flex-direction: column; align-items: center; gap: 7px;
+  padding: 48px 20px; text-align: center;
+  border: 1px dashed var(--border-strong); border-radius: var(--radius-md);
+  color: var(--muted);
+}
+.hub-empty.show { display: flex; }
+.hub-empty-icon {
+  width: 52px; height: 52px; border-radius: 14px; margin-bottom: 6px;
+  display: grid; place-items: center;
+  background: var(--accent-soft); color: var(--accent-bright);
+}
+.hub-empty-title { font-family: var(--font-heading); font-size: 17px; color: var(--text); }
+.hub-empty-sub { font-size: 13.5px; max-width: 420px; }
+.search-empty {
+  display: none; padding: 34px 20px; text-align: center; color: var(--muted); font-size: 14.5px;
+  border: 1px dashed var(--border-strong); border-radius: var(--radius-md);
+}
+
+/* ---- Buttons & badges --------------------------------------- */
+.btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 18px; border: 1px solid transparent; border-radius: var(--radius-sm);
+  font: inherit; font-size: 12.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+  cursor: pointer; text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.btn-gold { background: var(--accent); color: #171207; }
+.btn-gold:hover:not(:disabled) { background: var(--accent-bright); }
+.btn-ghost { background: transparent; color: var(--muted); border-color: var(--border-strong); }
+.btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+.btn-danger { background: transparent; color: var(--danger); border-color: rgba(220, 38, 38, 0.35); }
+.btn-danger:hover { background: rgba(220, 38, 38, 0.06); border-color: var(--danger); }
+.btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ---- List workspace ----------------------------------------- */
+.back-link {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin-bottom: 18px; font-size: 13.5px; font-weight: 600; text-decoration: none; color: var(--muted);
+  transition: color 0.15s ease;
+}
+.back-link:hover { color: var(--text); }
+.workspace-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.workspace-head h1 { font-size: 25px; }
+.page-meta { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--muted); margin-top: 7px; flex-wrap: wrap; }
+.meta-sep { opacity: 0.6; margin: 0 3px; }
+.meta-date { color: var(--text); font-weight: 600; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.card + .card { margin-top: 18px; }
+.card-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 14px 20px; border-bottom: 1px solid var(--border);
+}
+.card-title { font-family: var(--font-heading); font-size: 16px; color: var(--text); }
+.card-body { padding: 0; }
+
+.table-wrap { overflow-x: auto; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.data-table th {
+  text-align: left; padding: 10px 20px; white-space: nowrap;
+  background: #F7F9FB; border-bottom: 1px solid var(--border);
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em;
+  color: var(--muted);
+}
+.data-table td { padding: 12px 20px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.data-table tbody tr:last-child td { border-bottom: 0; }
+.data-table tbody tr { transition: background 0.12s ease; }
+.data-table tbody tr:hover { background: rgba(201, 162, 39, 0.06); }
+.data-table td.empty-cell { text-align: center; padding: 38px 20px; color: var(--muted); font-size: 14px; }
+.cell-name { font-weight: 600; color: var(--text); }
+
+/* ---- 1f. Create Confirmation List modal --------------------- */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 60;
+  display: grid; place-items: center; padding: 20px;
+  background: rgba(15, 23, 42, 0.42); backdrop-filter: blur(3px);
+}
+.modal-overlay[hidden] { display: none; }
+.modal {
+  width: min(460px, 100%);
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(2, 6, 16, 0.6);
+  animation: modal-in 0.22s ease; overflow: hidden;
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+.modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 22px; border-bottom: 1px solid var(--border); }
+.modal-head h3 { font-size: 19px; }
+.modal-x {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  padding: 6px; border-radius: 8px; display: grid; place-items: center;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.modal-x:hover { color: var(--text); background: rgba(15, 23, 42, 0.06); }
+.modal-body { padding: 20px 22px 6px; }
+.field { margin-bottom: 16px; }
+.field label {
+  display: block; font-size: 12px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--muted); margin-bottom: 7px;
+}
+.field input {
+  width: 100%; height: 44px; font: inherit; color: var(--text);
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 0 14px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.field input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.22); }
+.field input.invalid { border-color: #E06C6C; }
+.field-error { display: none; font-size: 12.5px; color: var(--danger); margin-top: 6px; }
+.field-error.show { display: block; }
+.modal-hint {
+  display: flex; gap: 9px; align-items: flex-start;
+  font-size: 13px; color: var(--muted);
+  background: var(--accent-soft); border: 1px solid rgba(201, 162, 39, 0.25);
+  border-radius: 10px; padding: 11px 13px; margin: 4px 0 18px;
+}
+.modal-hint svg { flex: none; color: var(--accent-bright); margin-top: 2px; }
+.modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 22px 20px; border-top: 1px solid var(--border); }
+
+/* ---- 1f2. New Certificate encoding screen -------------------- */
+.enc-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+/* Transient feedback for Export to Word — small, fixed, out of the
+   layout's way; never shown on paper. */
+.export-toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 10px);
+  background: #1B2A4A; color: #fff; font-size: 13px; line-height: 1.45; padding: 10px 18px;
+  border-radius: 8px; box-shadow: 0 8px 22px rgba(27, 42, 74, 0.22); opacity: 0;
+  pointer-events: none; transition: opacity .22s ease, transform .22s ease; z-index: 90;
+  max-width: min(620px, 92vw); text-align: center; }
+.export-toast.show { opacity: 1; transform: translate(-50%, 0); }
+.export-toast.error { background: var(--danger); }
+.encode-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; margin-top: 22px; }
+.encode-grid .enc-card { margin-top: 0; min-width: 0; }
+.enc-sec-head {
+  display: flex; align-items: center; gap: 11px; padding: 13px 18px;
+  border-bottom: 1px solid var(--border); background: #F8FAFC;
+}
+.enc-sec-chip {
+  width: 30px; height: 30px; border-radius: 8px; flex: none;
+  display: grid; place-items: center;
+  background: var(--accent-soft); color: var(--accent-bright);
+}
+.enc-sec-sub { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+.enc-sec-body { display: grid; grid-template-columns: repeat(12, 1fr); gap: 14px; padding: 16px 18px 18px; }
+.efield { display: flex; flex-direction: column; min-width: 0; }
+.efield label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); margin-bottom: 6px; transition: color 0.15s ease;
+}
+.efield-label-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.efield-label-row > label { margin-bottom: 0; }
+.efield .echk {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11.5px; font-weight: 600; text-transform: none; letter-spacing: 0.01em;
+  color: var(--muted); cursor: pointer; user-select: none; white-space: nowrap;
+}
+.efield .echk:hover { color: var(--text); }
+.efield .echk input { width: 13px; height: 13px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.ein {
+  width: 100%; height: 38px; font: inherit; font-size: 13.5px; color: var(--text);
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 0 12px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.ein:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.20); background: #FDF8EA; }
+.efield:focus-within > label, .efield:focus-within .efield-label-row > label { color: var(--accent-bright); }
+.ein:disabled { opacity: 0.45; cursor: not-allowed; background: rgba(15, 23, 42, 0.05); box-shadow: none; }
+.ein[readonly] { background: #F6F8FA; cursor: default; }
+.ein.invalid { border-color: #E06C6C; }
+.ein-ro-wrap { position: relative; }
+.ein-ro-wrap .ein { padding-right: 32px; }
+.ein-ro-wrap .lock {
+  position: absolute; right: 11px; top: 50%; transform: translateY(-50%);
+  color: var(--muted); opacity: 0.75; pointer-events: none; display: grid;
+}
+.ehint { font-size: 11.5px; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+.ehint strong { color: var(--text); font-weight: 600; }
+.card-title-wrap { display: flex; align-items: center; gap: 10px; }
+.span-2 { grid-column: span 2; }
+.span-3 { grid-column: span 3; }
+.span-4 { grid-column: span 4; }
+.span-6 { grid-column: span 6; }
+.span-8 { grid-column: span 8; }
+.span-12 { grid-column: span 12; }
+
+/* Brief gold pulse on the certificate row that was just saved. */
+@keyframes row-new { 0% { background: rgba(201, 162, 39, 0.20); } 100% { background: transparent; } }
+tr.row-new { animation: row-new 1.5s ease-out 1; }
+
+/* ---- 1f3. Certificate Preview --------------------------------
+   The certificate template comes from the original foundation
+   build and stays frozen — crest, parish line, ornament, title,
+   certify text, recipient, signature lines and date line. Its
+   colors are fixed values so it never changes with the theme. */
+.cert-stage { display: flex; justify-content: center; padding: 20px 0 30px; }
+.cert-frame {
+  max-width: 660px; width: 100%; margin: 0 auto; padding: 8px;
+  background: #FFFFFF;
+  border: 2px solid #1B2A4A; border-radius: 4px;
+  box-shadow: 0 10px 24px rgba(16, 24, 40, 0.12);
+}
+.cert-inner { padding: 34px 40px 30px; border: 1px solid #C9A227; text-align: center; }
+.cert-school-name { font-family: var(--font-heading); font-size: 23px; color: #1B2A4A; letter-spacing: 0.02em; }
+.cert-ornament { width: 130px; height: 0; border-top: 2px solid #C9A227; margin: 16px auto; }
+.cert-title { font-family: var(--font-heading); font-size: 29px; color: #1B2A4A; margin: 4px 0 2px; }
+.cert-body-text { font-size: 14.5px; margin: 12px 0; }
+.cert-recipient {
+  display: inline-block; padding: 0 30px 5px; margin: 2px 0 4px;
+  font-family: var(--font-heading); font-style: italic; font-size: 25px; color: #1B2A4A;
+  border-bottom: 1px dashed #B9C2CF;
+}
+.cert-sig-row { display: flex; justify-content: space-between; gap: 48px; margin-top: 42px; }
+.cert-sig { flex: 1; }
+.cert-sig-line { border-top: 1px solid #1B2A4A; margin-bottom: 6px; }
+.cert-sig-name { font-family: var(--font-heading); font-size: 15px; color: #1B2A4A; margin-bottom: 3px; }
+.cert-sig-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: #5D6B7E; }
+.cert-date { margin-top: 24px; font-size: 13px; font-style: italic; color: #5D6B7E; }
+.cert-date + .cert-date { margin-top: 6px; }
+.cert-blank {
+  display: inline-block; height: 1em; vertical-align: baseline;
+  border-bottom: 1px solid #B9C2CF;
+}
+
+/* Clickable certificate rows in the Certificate Workspace. */
+.cert-row { cursor: pointer; }
+.cell-go { width: 46px; text-align: right; color: var(--muted); }
+
+/* PRINT — the browser's native dialog prints only the certificate. */
+@media print {
+  body { background: #fff !important; }
+  .topbar, .footer, .back-link, .workspace-head { display: none !important; }
+  .export-toast { display: none !important; }
+  .content { max-width: none; padding: 0; }
+  .cert-stage { padding: 0; }
+  .cert-frame { max-width: none; box-shadow: none; border-radius: 0; }
+}
+@page { size: A4 portrait; margin: 12mm; }
+
+@media (max-width: 700px) {
+  .cert-inner { padding: 24px 14px; }
+  .cert-sig-row { gap: 18px; }
+}
+
+@media (max-width: 960px) {
+  .encode-grid, .enc-sec-body { grid-template-columns: 1fr; }
+  .encode-grid .enc-card, .enc-sec-body .efield { grid-column: auto; }
+  .enc-actions { width: 100%; justify-content: flex-end; }
+}
+
+/* ---- 1g. Responsive ----------------------------------------- */
+@media (max-width: 760px) {
+  .topbar { padding: 0 18px; }
+  .brand-name { font-size: 15px; }
+  .brand-sub { font-size: 9px; letter-spacing: 0.13em; }
+  .user-chip span:last-child { display: none; }
+  .content { padding: 24px 18px 14px; }
+  .page-header h1 { font-size: 22px; }
+  .search-box { margin-top: 16px; }
+  .lists-bar { align-items: flex-start; flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     2. TOP HEADER — Divine Mercy Parish + Confirmation Certification
+     ============================================================ -->
+<header class="topbar">
+  <div class="brand">
+    <span id="brandLogo"></span>
+    <div>
+      <span class="brand-name">Divine Mercy Parish</span>
+      <span class="brand-sub">Confirmation Certification</span>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="user-chip"><span class="avatar">A</span><span>Administrator</span></div>
+  </div>
+</header>
+
+<main id="app" class="content page-enter" tabindex="-1"></main>
+
+<footer class="footer">
+  Divine Mercy Parish &middot; Confirmation Certification &mdash; runs entirely in your browser.
+  Lists you create are saved only on this device.
+</footer>
+
+<!-- ============================================================
+     2b. CREATE CONFIRMATION LIST MODAL
+     ============================================================ -->
+<div class="modal-overlay" id="modalOverlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-head">
+      <h3 id="modalTitle">Create Confirmation List</h3>
+      <button type="button" class="modal-x" id="modalClose" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <form id="createForm" novalidate>
+      <div class="modal-body">
+        <div class="field">
+          <label for="listNameInput">List name</label>
+          <input type="text" id="listNameInput" placeholder="e.g., Confirmation 2026" autocomplete="off">
+          <div class="field-error" id="nameError">Please enter a name for this list.</div>
+        </div>
+        <div class="field">
+          <label for="listDateInput">Confirmation date</label>
+          <input type="date" id="listDateInput">
+          <div class="field-error" id="dateError">Please choose the confirmation date.</div>
+        </div>
+        <div class="field">
+          <label for="listPriestInput">Parish priest</label>
+          <input type="text" id="listPriestInput" placeholder="e.g., Fr. Juan Dela Cruz" autocomplete="off">
+          <div class="field-error" id="priestError">Please enter the parish priest&rsquo;s name.</div>
+        </div>
+        <div class="modal-hint">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          <span>The confirmation date and the parish priest are stored with this list. Every certificate encoded inside it will automatically use them &mdash; you won&rsquo;t need to enter either one again.</span>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="btn btn-ghost" id="modalCancel">Cancel</button>
+        <button type="submit" class="btn btn-gold" id="modalCreate">Create List</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   3. APPLICATION SCRIPT
+   ============================================================ */
+
+/* ---- 3.1 CONFIG --------------------------------------------- */
+var CONFIG = {
+  org: {
+    name: 'Divine Mercy Parish',
+    initials: 'DMP',
+    appLine: 'Confirmation Certification'
+  },
+  storageKey: 'dmp_cc_lists_v1'
+};
+
+/* ---- 3.2 DATA ------------------------------------------------
+   The system starts with NO lists. Created lists are persisted
+   in this browser's localStorage; each one carries its own
+   confirmation date, parish priest and encoded certificates.
+
+   list = {
+     id: string,
+     name: string,
+     date: 'YYYY-MM-DD',   <- the list's Confirmation Date
+     priest: string,       <- the list's Parish Priest
+     createdAt: ISO string,
+     certificates: [{      <- encoded via the New Certificate screen
+       id, fullName, noFather, fatherName, motherName,
+       baptismDate, baptismChurch, confirmedBy,
+       sponsor1, sponsor2, bookNo, page, line,
+       issuanceDate, purpose: 'For Reference', createdAt
+     }]
+   }
+   The Confirmation Date and Parish Priest live ONLY on the list;
+   certificates inherit them and never duplicate them. Roster-era
+   fields from earlier builds (group, certified) are ignored on
+   load and never written.
+
+   ONE saved certificate record per confirmand: the same stored
+   object serves SAVE → Preview → Edit → Delete → Print →
+   Export to Word. Actions address it by id; nothing is copied. */
+var lists = loadLists();
+
+function loadLists() {
+  try {
+    var raw = localStorage.getItem(CONFIG.storageKey);
+    var arr = JSON.parse(raw || '[]');
+    if (!Array.isArray(arr)) { return []; }
+    /* Normalize lists saved by earlier builds. */
+    arr.forEach(function (l) {
+      if (typeof l.priest !== 'string') { l.priest = ''; }
+      if (!Array.isArray(l.certificates)) {
+        /* Roster-era build: certificates were a "confirmands"
+           roster. Keep the names; drop concepts the system no
+           longer has (group, status). */
+        var legacy = Array.isArray(l.confirmands) ? l.confirmands : [];
+        l.certificates = legacy.map(function (r) {
+          return {
+            id: uid(), fullName: r.name || '',
+            noFather: false, fatherName: '', motherName: '',
+            baptismDate: '', baptismChurch: '', confirmedBy: '',
+            sponsor1: '', sponsor2: '', bookNo: '', page: '', line: '',
+            issuanceDate: '', purpose: 'For Reference',
+            createdAt: l.createdAt || new Date().toISOString()
+          };
+        });
+      }
+    });
+    return arr;
+  } catch (err) { return []; }
+}
+function saveLists() {
+  try { localStorage.setItem(CONFIG.storageKey, JSON.stringify(lists)); } catch (err) { /* private mode: session-only */ }
+}
+function uid() {
+  return (window.crypto && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : 'l' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+/* Counts derive from the data — nothing is hardcoded. The system
+   carries no per-certificate statuses. */
+function listStats(list) {
+  return { total: (list.certificates || []).length };
+}
+
+/* '2026-03-15' -> 'Mar 15, 2026' (parsed as local date, no TZ shift). */
+function fmtDate(iso) {
+  var p = String(iso).split('-');
+  var d = new Date(+p[0], +p[1] - 1, +p[2]);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+/* Formal certificate wording: '2026-08-25' -> '25th day of August, 2026'. */
+var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+  'August', 'September', 'October', 'November', 'December'];
+function ordinalDay(n) {
+  var s = ['th', 'st', 'nd', 'rd'], v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+function fmtFormalDate(iso) {
+  var p = String(iso || '').split('-');
+  var y = +p[0], m = +p[1], d = +p[2];
+  if (p.length !== 3 || !y || m < 1 || m > 12 || d < 1 || d > 31) { return ''; }
+  return ordinalDay(d) + ' day of ' + MONTHS[m - 1] + ', ' + p[0];
+}
+function todayISO() {
+  var d = new Date();
+  return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+}
+/* Escape user-entered text before it goes into any HTML string. */
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+/* ---- 3.3 ICONS ---------------------------------------------- */
+var ICONS = {
+  search: '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+  plus: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M15 3.13a4 4 0 0 1 0 7.75"/>',
+  award: '<circle cx="12" cy="8.5" r="5.5"/><path d="M8.6 12.9 7.3 21l4.7-2.7L16.7 21l-1.3-8.1"/>',
+  layers: '<polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/>',
+  landmark: '<line x1="3" y1="22" x2="21" y2="22"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 2 20 7 4 7"/>',
+  calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+  chevron: '<polyline points="9 18 15 12 9 6"/>',
+  arrowLeft: '<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',
+  x: '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>',
+  save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>',
+  download: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+  trash: '<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  lock: '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  droplet: '<path d="M12 2.7s6.5 7.1 6.5 11.3a6.5 6.5 0 1 1-13 0C5.5 9.8 12 2.7 12 2.7z"/>',
+  printer: '<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
+  pen: '<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>'
+};
+function icon(name, size) {
+  size = size || 18;
+  return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[name] || '') + '</svg>';
+}
+
+/* Crest placeholder — replace this one function with an <img>
+   later to use the parish logo file. Optional stroke/fill/text
+   colors let the certificate render it exactly as designed. */
+function crest(initials, size, stroke, fill, textColor) {
+  var fontSize = initials.length > 2 ? 12 : 15;
+  return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 48 48" aria-hidden="true">' +
+    '<path d="M24 3 41 9v13c0 11.5-7.2 18.8-17 23-9.8-4.2-17-11.5-17-23V9l17-6z" style="fill:' + (fill || 'rgba(201,162,39,0.10)') + ';stroke:' + (stroke || 'var(--accent)') + ';" stroke-width="2.5" stroke-linejoin="round"/>' +
+    '<text x="24" y="29" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="' + fontSize + '" style="fill:' + (textColor || 'var(--accent-bright)') + ';">' + esc(initials) + '</text>' +
+    '</svg>';
+}
+
+/* ---- 3.4 SHARED BUILDERS ------------------------------------ */
+function statCard(iconName, label, value) {
+  return '<div class="stat-card">' +
+    '<span class="stat-chip">' + icon(iconName, 20) + '</span>' +
+    '<div><div class="stat-value">' + value + '</div><div class="stat-label">' + label + '</div></div>' +
+  '</div>';
+}
+function listCard(list) {
+  var s = listStats(list);
+  return '<a class="list-card" href="#/list/' + list.id + '" data-id="' + list.id + '" data-search="' +
+      (list.name + ' ' + (list.priest || '') + ' ' + fmtDate(list.date)).toLowerCase() + '">' +
+    '<div class="list-card-top">' +
+      '<span class="list-chip">' + icon('award', 19) + '</span>' +
+      '<span class="count-pill">' + s.total + '</span>' +
+      '<span class="list-arrow">' + icon('chevron', 18) + '</span>' +
+    '</div>' +
+    '<h3 class="list-title">' + esc(list.name) + '</h3>' +
+    '<div class="list-org">' + icon('landmark', 14) + CONFIG.org.name + '</div>' +
+    '<div class="list-date">' + icon('calendar', 14) + 'Confirmation date: <span class="list-date-val">' + fmtDate(list.date) + '</span></div>' +
+    '<div class="list-date">' + icon('users', 14) + 'Parish priest: <span class="list-date-val">' + (list.priest ? esc(list.priest) : '&mdash;') + '</span></div>' +
+    '<div class="list-divider"></div>' +
+    '<div class="list-nums">' +
+      '<div class="num-block"><span class="num">' + s.total + '</span><span class="num-label">Certificates</span></div>' +
+    '</div>' +
+  '</a>';
+}
+
+/* ---- 3.5 PAGES ---------------------------------------------- */
+
+/* Hub — the main screen. Starts with everything at zero. */
+function renderHub() {
+  var totals = lists.reduce(function (acc, list) {
+    var s = listStats(list);
+    acc.confirmands += s.total;
+    acc.certificates += s.total;
+    return acc;
+  }, { confirmands: 0, certificates: 0 });
+
+  var cards = lists.map(listCard).join('');
+
+  return '<div class="page-header"><h1>Confirmation Certification Workspace</h1></div>' +
+
+    '<div class="search-box">' + icon('search', 18) +
+      '<input type="text" id="listSearch" placeholder="Search confirmation lists&hellip;" aria-label="Search confirmation lists">' +
+    '</div>' +
+
+    '<div class="stat-grid">' +
+      statCard('layers', 'Total Lists', lists.length) +
+      statCard('users', 'Total Confirmands', totals.confirmands) +
+      statCard('award', 'Certificates', totals.certificates) +
+    '</div>' +
+
+    '<div class="lists-bar">' +
+      '<div class="lists-label">Confirmation lists <span class="count-pill">' + lists.length + '</span></div>' +
+      '<button type="button" class="btn btn-gold" id="addListBtn">' +
+        icon('plus', 15) + ' Add another list</button>' +
+    '</div>' +
+
+    '<div class="lists-grid" id="listsGrid">' + cards + '</div>' +
+
+    '<div class="hub-empty" id="hubEmpty">' +
+      '<span class="hub-empty-icon">' + icon('layers', 24) + '</span>' +
+      '<span class="hub-empty-title">No confirmation lists yet</span>' +
+      '<span class="hub-empty-sub">Click &ldquo;+ Add another list&rdquo; to create your first confirmation list. Its confirmation date will apply to every certificate inside it.</span>' +
+    '</div>' +
+    '<div class="search-empty" id="searchEmpty">No lists match &ldquo;<span id="emptyQuery"></span>&rdquo;.</div>';
+}
+
+/* Per-list Certificate Workspace — simple: the list's facts, a
+   count, the saved certificates as an ALPHABETICAL list of full
+   names (click a name to reopen its saved record), and
+   "+ New Certificate". No statuses, no extra columns. */
+function renderList(list) {
+  var s = listStats(list);
+  /* Display order is alphabetical by full name; sorting works on
+     a shallow copy, so the saved records keep their identity. */
+  var certs = (list.certificates || []).slice().sort(function (a, b) {
+    return (a.fullName || '').localeCompare(b.fullName || '', 'en', { sensitivity: 'base' });
+  });
+  var rows = certs.map(function (c) {
+    var cls = 'cert-row' + (c.id === justSavedCertId ? ' row-new' : '');
+    return '<tr class="' + cls + '" tabindex="0" role="link" data-cert="' + c.id + '" aria-label="Open certificate preview for ' + esc(c.fullName) + '">' +
+      '<td class="cell-name">' + esc(c.fullName) + '</td>' +
+      '<td class="cell-go">' + icon('chevron', 16) + '</td>' +
+    '</tr>';
+  }).join('');
+  justSavedCertId = null;
+  if (!rows) {
+    rows = '<tr><td colspan="2" class="empty-cell">No certificates encoded yet. Click &ldquo;+ New Certificate&rdquo; to encode the first one.</td></tr>';
+  }
+
+  return '<a class="back-link" href="#/workspace">' + icon('arrowLeft', 16) + ' All lists</a>' +
+    '<div class="workspace-head">' +
+      '<div><h1>' + esc(list.name) + '</h1>' +
+      '<div class="page-meta">' + icon('landmark', 15) + CONFIG.org.name +
+        '<span class="meta-sep">&middot;</span>' + icon('calendar', 14) +
+        'Confirmation date: <span class="meta-date">' + fmtDate(list.date) + '</span>' +
+        '<span class="meta-sep">&middot;</span>' + icon('users', 14) +
+        'Parish priest: <span class="meta-date">' + (list.priest ? esc(list.priest) : '&mdash;') + '</span></div></div>' +
+    '</div>' +
+    '<section class="card">' +
+      '<div class="card-head"><div class="card-title-wrap"><div class="card-title">Certificates</div>' +
+        '<span class="count-pill">' + s.total + '</span></div>' +
+        '<button type="button" class="btn btn-gold" id="newCertBtn">' +
+          icon('plus', 15) + ' New certificate</button></div>' +
+      '<div class="card-body"><div class="table-wrap"><table class="data-table">' +
+        '<thead><tr><th>Confirmand</th><th class="cell-go" aria-label="Open"></th></tr></thead>' +
+        '<tbody>' + rows + '</tbody>' +
+      '</table></div></div>' +
+    '</section>';
+}
+
+/* ---- 3.6 CREATE-LIST MODAL ---------------------------------- */
+var overlay   = document.getElementById('modalOverlay');
+var nameInput = document.getElementById('listNameInput');
+var dateInput = document.getElementById('listDateInput');
+var priestInput = document.getElementById('listPriestInput');
+
+function openModal() {
+  nameInput.value = '';
+  dateInput.value = '';
+  priestInput.value = '';
+  setError(nameInput, 'nameError', false);
+  setError(dateInput, 'dateError', false);
+  setError(priestInput, 'priestError', false);
+  overlay.hidden = false;
+  document.body.style.overflow = 'hidden';
+  nameInput.focus();
+}
+function closeModal() {
+  overlay.hidden = true;
+  document.body.style.overflow = '';
+  var btn = document.getElementById('addListBtn');
+  if (btn) { btn.focus(); }
+}
+function setError(input, errorId, show) {
+  input.classList.toggle('invalid', show);
+  document.getElementById(errorId).classList.toggle('show', show);
+}
+function createList() {
+  var name = nameInput.value.trim();
+  var date = dateInput.value;
+  var priest = priestInput.value.trim();
+  var ok = true;
+  if (!name) { setError(nameInput, 'nameError', true); ok = false; }
+  if (!date) { setError(dateInput, 'dateError', true); ok = false; }
+  if (!priest) { setError(priestInput, 'priestError', true); ok = false; }
+  if (!ok) { return; }
+
+  var list = {
+    id: uid(),
+    name: name,
+    date: date,                  /* the list's Confirmation Date */
+    priest: priest,              /* the list's Parish Priest */
+    createdAt: new Date().toISOString(),
+    certificates: []
+  };
+  lists.unshift(list);             /* newest first */
+  saveLists();
+  closeModal();
+
+  /* Continue the flow: open the new list's Certificate Workspace,
+     where "+ New Certificate" starts the first encoding. */
+  location.hash = '#/list/' + list.id;
+}
+
+/* ---- 3.6b NEW CERTIFICATE ENCODING SCREEN --------------------
+   Opens from "+ New Certificate" inside a list. The list owns the
+   Confirmation Date and the Parish Priest, so both appear here as
+   read-only inherited facts — never re-entered per certificate.
+   Fields follow the certificate's wording order; Enter advances
+   through them.                                                */
+
+var justSavedCertId = null;
+var encodeTeardown = null;
+
+/* The ONE registry of editable fields, in certificate order. The
+   Enter-key walk follows it, the dirty check compares it, and it
+   is what SAVE collects. Read-only inherited tiles (Confirmation
+   Date, Parish Priest, Purpose) are not part of it. */
+var CERT_FIELDS = ['fFullName', 'fFather', 'fMother', 'fBaptismDate', 'fBaptismChurch',
+  'fConfirmedBy', 'fSponsor1', 'fSponsor2', 'fBookNo', 'fPage', 'fLine', 'fIssuanceDate'];
+
+function ef(id) { return document.getElementById(id); }
+function lockIcon() { return '<span class="lock">' + icon('lock', 13) + '</span>'; }
+
+function renderEncode(list, cert) {
+  var formal = fmtFormalDate(list.date) || '&mdash;';
+  var editing = !!cert;
+  return '<a class="back-link" id="encBack" href="' + (editing ? '#/list/' + list.id + '/cert/' + cert.id : '#/list/' + list.id) + '">' + icon('arrowLeft', 16) + ' ' + esc(list.name) + '</a>' +
+    '<div class="workspace-head">' +
+      '<div><h1>' + (editing ? 'Edit Certificate' : 'New Certificate') + '</h1>' +
+      '<div class="page-meta">' + icon('layers', 15) + (editing ? 'Editing in ' : 'Encoding into ') + '<span class="meta-date">' + esc(list.name) + '</span>' +
+        '<span class="meta-sep">&middot;</span>' + icon('calendar', 14) +
+        'Confirmation date: <span class="meta-date">' + formal + '</span></div></div>' +
+      '<div class="enc-actions">' +
+        '<button type="button" class="btn btn-ghost" id="encCancelBtn">' + icon('x', 14) + ' Cancel</button>' +
+        '<button type="button" class="btn btn-gold" id="encSaveBtn">' + icon('save', 15) + ' Save</button>' +
+      '</div>' +
+    '</div>' +
+    '<form id="certForm" class="encode-grid" novalidate autocomplete="off">' +
+
+      /* --- Section 1 · Confirmand Information --- */
+      '<section class="card enc-card span-6">' +
+        '<div class="enc-sec-head"><span class="enc-sec-chip">' + icon('users', 16) + '</span>' +
+          '<div><div class="card-title">Confirmand Information</div>' +
+          '<div class="enc-sec-sub">Exactly as it will appear on the certificate</div></div></div>' +
+        '<div class="enc-sec-body">' +
+          '<div class="efield span-12">' +
+            '<label for="fFullName">Full name</label>' +
+            '<input type="text" class="ein" id="fFullName" placeholder="e.g., Juan M. Dela Cruz">' +
+            '<div class="field-error" id="eFullName">Please enter the confirmand&rsquo;s full name.</div>' +
+          '</div>' +
+          '<div class="efield span-6">' +
+            '<div class="efield-label-row"><label for="fFather">Father&rsquo;s name</label>' +
+              '<label class="echk"><input type="checkbox" id="fNoFather"><span>No father listed</span></label></div>' +
+            '<input type="text" class="ein" id="fFather" placeholder="Father&rsquo;s full name">' +
+          '</div>' +
+          '<div class="efield span-6">' +
+            '<label for="fMother">Mother&rsquo;s name</label>' +
+            '<input type="text" class="ein" id="fMother" placeholder="Mother&rsquo;s full name">' +
+          '</div>' +
+        '</div>' +
+      '</section>' +
+
+      /* --- Section 2 · Baptism Information --- */
+      '<section class="card enc-card span-6">' +
+        '<div class="enc-sec-head"><span class="enc-sec-chip">' + icon('droplet', 16) + '</span>' +
+          '<div><div class="card-title">Baptism Information</div>' +
+          '<div class="enc-sec-sub">From the baptismal register</div></div></div>' +
+        '<div class="enc-sec-body">' +
+          '<div class="efield span-12">' +
+            '<label for="fBaptismDate">Baptism date</label>' +
+            '<input type="date" class="ein" id="fBaptismDate">' +
+            '<div class="ehint" id="hBaptismDate" hidden></div>' +
+          '</div>' +
+          '<div class="efield span-12">' +
+            '<label for="fBaptismChurch">Church of baptism</label>' +
+            '<input type="text" class="ein" id="fBaptismChurch" placeholder="e.g., St. Anne&rsquo;s Parish">' +
+          '</div>' +
+        '</div>' +
+      '</section>' +
+
+      /* --- Section 3 · Confirmation Information --- */
+      '<section class="card enc-card span-12">' +
+        '<div class="enc-sec-head"><span class="enc-sec-chip">' + icon('award', 16) + '</span>' +
+          '<div><div class="card-title">Confirmation Information</div>' +
+          '<div class="enc-sec-sub">Date and priest are inherited from this list</div></div></div>' +
+        '<div class="enc-sec-body">' +
+          '<div class="efield span-3">' +
+            '<label for="fConfDate">Confirmation date</label>' +
+            '<div class="ein-ro-wrap"><input type="text" class="ein" id="fConfDate" readonly value="' + formal + '">' + lockIcon() + '</div>' +
+            '<div class="ehint">Inherited from this list</div>' +
+          '</div>' +
+          '<div class="efield span-3">' +
+            '<label for="fPriest">Parish priest</label>' +
+            '<div class="ein-ro-wrap"><input type="text" class="ein" id="fPriest" readonly value="' + (list.priest ? esc(list.priest) : '&mdash;') + '">' + lockIcon() + '</div>' +
+            '<div class="ehint">Inherited from this list</div>' +
+          '</div>' +
+          '<div class="efield span-6">' +
+            '<label for="fConfirmedBy">Confirmed by (Most Rev.)</label>' +
+            '<input type="text" class="ein" id="fConfirmedBy" placeholder="e.g., Most Rev. Gilbert A. Garcia, D.D.">' +
+          '</div>' +
+          '<div class="efield span-6">' +
+            '<label for="fSponsor1">Sponsor 1</label>' +
+            '<input type="text" class="ein" id="fSponsor1" placeholder="Sponsor&rsquo;s full name">' +
+          '</div>' +
+          '<div class="efield span-6">' +
+            '<label for="fSponsor2">Sponsor 2</label>' +
+            '<input type="text" class="ein" id="fSponsor2" placeholder="Sponsor&rsquo;s full name">' +
+          '</div>' +
+          '<div class="efield span-3">' +
+            '<label for="fBookNo">Confirmation book no.</label>' +
+            '<input type="text" class="ein" id="fBookNo" inputmode="numeric" placeholder="Registry no.">' +
+          '</div>' +
+          '<div class="efield span-2">' +
+            '<label for="fPage">Page</label>' +
+            '<input type="text" class="ein" id="fPage" inputmode="numeric">' +
+          '</div>' +
+          '<div class="efield span-2">' +
+            '<label for="fLine">Line</label>' +
+            '<input type="text" class="ein" id="fLine" inputmode="numeric">' +
+          '</div>' +
+          '<div class="efield span-3">' +
+            '<label for="fIssuanceDate">Date of issuance</label>' +
+            '<input type="date" class="ein" id="fIssuanceDate">' +
+            '<div class="ehint" id="hIssuance" hidden></div>' +
+          '</div>' +
+          '<div class="efield span-2">' +
+            '<label for="fPurpose">Purpose</label>' +
+            '<div class="ein-ro-wrap"><input type="text" class="ein" id="fPurpose" readonly value="For Reference">' + lockIcon() + '</div>' +
+            '<div class="ehint">Set automatically</div>' +
+          '</div>' +
+        '</div>' +
+      '</section>' +
+    '</form>';
+}
+
+function mountEncode(list, cert) {
+  var form = ef('certForm');
+  var noFather = ef('fNoFather');
+  var father = ef('fFather');
+
+  if (cert) {
+    /* Edit mode: every field starts from the saved certificate. */
+    ef('fFullName').value = cert.fullName || '';
+    ef('fNoFather').checked = !!cert.noFather;
+    father.disabled = !!cert.noFather;
+    ef('fFather').value = cert.fatherName || '';
+    ef('fMother').value = cert.motherName || '';
+    ef('fBaptismDate').value = cert.baptismDate || '';
+    ef('fBaptismChurch').value = cert.baptismChurch || '';
+    ef('fConfirmedBy').value = cert.confirmedBy || '';
+    ef('fSponsor1').value = cert.sponsor1 || '';
+    ef('fSponsor2').value = cert.sponsor2 || '';
+    ef('fBookNo').value = cert.bookNo || '';
+    ef('fPage').value = cert.page || '';
+    ef('fLine').value = cert.line || '';
+    ef('fIssuanceDate').value = cert.issuanceDate || todayISO();
+  } else {
+    /* New: date of issuance defaults to today; everything else empty. */
+    ef('fIssuanceDate').value = todayISO();
+  }
+
+  /* Date fields preview their formal certificate wording live. */
+  function dateHint(inputId, hintId) {
+    var el = ef(inputId), hint = ef(hintId);
+    var sync = function () {
+      var f = fmtFormalDate(el.value);
+      if (f) { hint.innerHTML = 'Will print as: <strong>' + f + '</strong>'; hint.hidden = false; }
+      else { hint.hidden = true; }
+    };
+    el.addEventListener('input', sync);
+    sync();
+  }
+  dateHint('fBaptismDate', 'hBaptismDate');
+  dateHint('fIssuanceDate', 'hIssuance');
+
+  /* "No father listed": disable and clear the field. Nothing is
+     printed in its place — the certificate simply leaves it blank. */
+  noFather.addEventListener('change', function () {
+    father.disabled = noFather.checked;
+    if (noFather.checked) { father.value = ''; }
+  });
+
+  /* Enter = next field in certificate order; a disabled Father's
+     Name is skipped; Enter on the last field moves to Save. */
+  form.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') { return; }
+    var id = e.target.id;
+    var i = CERT_FIELDS.indexOf(id);
+    var next = null;
+    if (id === 'fNoFather') {
+      next = noFather.checked ? 'fMother' : 'fFather';
+    } else if (i !== -1) {
+      next = CERT_FIELDS[i + 1] || null;
+      if (id === 'fFullName' && noFather.checked) { next = 'fMother'; }
+    }
+    if (!next) {
+      if (i === CERT_FIELDS.length - 1) { e.preventDefault(); ef('encSaveBtn').focus(); }
+      return;
+    }
+    e.preventDefault();
+    var el = ef(next);
+    if (el && !el.disabled) { el.focus(); }
+  });
+
+  ef('fFullName').addEventListener('input', function () {
+    this.classList.remove('invalid');
+    ef('eFullName').classList.remove('show');
+  });
+
+  /* Dirty = any editable field differs from how the form started
+     (same rule for a fresh form and an edited certificate). */
+  var initial = {};
+  CERT_FIELDS.forEach(function (id) { initial[id] = ef(id).value; });
+  initial.noFather = noFather.checked;
+  function formDirty() {
+    if (noFather.checked !== initial.noFather) { return true; }
+    for (var k = 0; k < CERT_FIELDS.length; k++) { if (ef(CERT_FIELDS[k]).value !== initial[CERT_FIELDS[k]]) { return true; } }
+    return false;
+  }
+  function confirmDiscard() {
+    return window.confirm('Discard this certificate?\nThe information you entered will not be saved.');
+  }
+
+  var backHash = cert ? '#/list/' + list.id + '/cert/' + cert.id : '#/list/' + list.id;
+  ef('encSaveBtn').addEventListener('click', function () { saveCertificate(list, cert); });
+  ef('encSaveBtn').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); saveCertificate(list, cert); }
+  });
+  ef('encCancelBtn').addEventListener('click', function () {
+    if (formDirty() && !confirmDiscard()) { return; }
+    location.hash = backHash;
+  });
+  ef('encBack').addEventListener('click', function (e) {
+    if (formDirty() && !confirmDiscard()) { e.preventDefault(); }
+  });
+  function onKey(e) {
+    if (e.key === 'Escape') {
+      if (formDirty() && !confirmDiscard()) { return; }
+      location.hash = backHash;
+    }
+  }
+  document.addEventListener('keydown', onKey);
+  encodeTeardown = function () { document.removeEventListener('keydown', onKey); };
+
+  /* Keyboard flow starts at Full Name. */
+  requestAnimationFrame(function () { ef('fFullName').focus(); });
+}
+
+function saveCertificate(list, cert) {
+  var name = ef('fFullName').value.trim();
+  if (!name) {
+    ef('fFullName').classList.add('invalid');
+    ef('eFullName').classList.add('show');
+    ef('fFullName').focus();
+    return;
+  }
+  var data = {
+    fullName: name,
+    noFather: ef('fNoFather').checked,
+    fatherName: ef('fNoFather').checked ? '' : ef('fFather').value.trim(),
+    motherName: ef('fMother').value.trim(),
+    baptismDate: ef('fBaptismDate').value,
+    baptismChurch: ef('fBaptismChurch').value.trim(),
+    confirmedBy: ef('fConfirmedBy').value.trim(),
+    sponsor1: ef('fSponsor1').value.trim(),
+    sponsor2: ef('fSponsor2').value.trim(),
+    bookNo: ef('fBookNo').value.trim(),
+    page: ef('fPage').value.trim(),
+    line: ef('fLine').value.trim(),
+    issuanceDate: ef('fIssuanceDate').value,
+    purpose: 'For Reference'
+  };
+  if (cert) {
+    /* EDIT from the preview: update in place, keep identity. */
+    Object.assign(cert, data);
+  } else {
+    cert = Object.assign({ id: uid(), createdAt: new Date().toISOString() }, data);
+    list.certificates.push(cert);
+  }
+  saveLists();
+  justSavedCertId = cert.id;
+  /* SAVE always opens the certificate preview automatically. */
+  location.hash = '#/list/' + list.id + '/cert/' + cert.id;
+}
+
+/* ---- 3.6c CERTIFICATE PREVIEW --------------------------------
+   The certificate uses the parish template from the original
+   foundation build — design frozen. Only the encoded data is
+   placed into its positions; anything not yet encoded renders
+   as a blank line, and "No father listed" leaves the father out
+   entirely (never "N/A" or "None").                            */
+
+function certBlank(width) {
+  return '<span class="cert-blank" style="width:' + (width || 140) + 'px"></span>';
+}
+
+/* Shared display names — the certificate preview and the Word
+   export render the same normalized wording (a "Most Rev."
+   prefix is added when the encoder left it out). */
+function priestDisplayName(list) { return list.priest ? esc(list.priest) : ''; }
+function bishopDisplayName(cert) {
+  var raw = (cert.confirmedBy || '').trim();
+  if (!raw) { return ''; }
+  return /^most\s+rev\.?\s*/i.test(raw) ? esc(raw) : 'Most Rev. ' + esc(raw);
+}
+
+function renderCertificateHTML(list, cert) {
+  var priestName = priestDisplayName(list);
+  var bishopName = bishopDisplayName(cert);
+
+  var parentsLine = '';
+  if (cert.noFather) {
+    if (cert.motherName) { parentsLine = 'child of ' + esc(cert.motherName); }
+  } else {
+    parentsLine = 'child of ' + (cert.fatherName ? esc(cert.fatherName) : certBlank(150)) +
+      ' and ' + (cert.motherName ? esc(cert.motherName) : certBlank(150));
+  }
+
+  var baptismLine = 'baptized on the ' +
+    (cert.baptismDate ? fmtFormalDate(cert.baptismDate) : certBlank(170)) +
+    ' at ' + (cert.baptismChurch ? esc(cert.baptismChurch) : certBlank(200));
+
+  var sponsorsLine = 'Sponsors: ' + (cert.sponsor1 ? esc(cert.sponsor1) : certBlank(140)) +
+    ' and ' + (cert.sponsor2 ? esc(cert.sponsor2) : certBlank(140));
+
+  var registryLine = 'Entered in the Book of Confirmation No. ' +
+    (cert.bookNo ? esc(cert.bookNo) : certBlank(80)) +
+    ', Page ' + (cert.page ? esc(cert.page) : certBlank(60)) +
+    ', Line ' + (cert.line ? esc(cert.line) : certBlank(60)) + '.';
+
+  return '<div class="cert-frame" id="certPaper"><div class="cert-inner">' +
+    '<div style="margin-bottom:10px;">' + crest(CONFIG.org.initials, 64, '#1B2A4A', 'rgba(201,162,39,0.12)', '#1B2A4A') + '</div>' +
+    '<div class="cert-school-name">' + esc(CONFIG.org.name) + '</div>' +
+    '<div class="cert-ornament"></div>' +
+    '<div class="cert-title">Certificate of Confirmation</div>' +
+    '<p class="cert-body-text">This is to certify that</p>' +
+    '<div class="cert-recipient">' + esc(cert.fullName) + '</div>' +
+    (parentsLine ? '<p class="cert-body-text">' + parentsLine + '</p>' : '') +
+    '<p class="cert-body-text">' + baptismLine + '</p>' +
+    '<p class="cert-body-text">has received the Sacrament of Confirmation<br>on the ' +
+      (fmtFormalDate(list.date) || certBlank(190)) + '.</p>' +
+    '<p class="cert-body-text">confirmed by ' + (bishopName || certBlank(230)) + '</p>' +
+    '<p class="cert-body-text">' + sponsorsLine + '</p>' +
+    '<p class="cert-body-text">' + registryLine + '</p>' +
+    '<div class="cert-sig-row">' +
+      '<div class="cert-sig"><div class="cert-sig-line"></div>' +
+        (priestName ? '<div class="cert-sig-name">' + priestName + '</div>' : '') +
+        '<div class="cert-sig-title">Parish Priest</div></div>' +
+      '<div class="cert-sig"><div class="cert-sig-line"></div>' +
+        (bishopName ? '<div class="cert-sig-name">' + bishopName + '</div>' : '') +
+        '<div class="cert-sig-title">Confirmed by</div></div>' +
+    '</div>' +
+    '<div class="cert-date">Given this ' +
+      (cert.issuanceDate ? fmtFormalDate(cert.issuanceDate) : certBlank(180)) + '</div>' +
+    '<div class="cert-date">Purpose: ' + esc(cert.purpose || 'For Reference') + '</div>' +
+  '</div></div>';
+}
+
+function renderPreview(list, cert) {
+  return '<a class="back-link" href="#/list/' + list.id + '">' + icon('arrowLeft', 16) + ' ' + esc(list.name) + '</a>' +
+    '<div class="workspace-head">' +
+      '<div><h1>Certificate Preview</h1>' +
+      '<div class="page-meta">' + icon('award', 15) + '<span class="meta-date">' + esc(cert.fullName) + '</span>' +
+        '<span class="meta-sep">&middot;</span>' + icon('layers', 15) + esc(list.name) + '</div></div>' +
+      '<div class="enc-actions">' +
+        '<button type="button" class="btn btn-ghost" id="prevExportBtn">' + icon('download', 14) + ' Export to Word</button>' +
+        '<button type="button" class="btn btn-ghost" id="prevEditBtn">' + icon('pen', 14) + ' Edit</button>' +
+        '<button type="button" class="btn btn-danger" id="prevDeleteBtn">' + icon('trash', 14) + ' Delete</button>' +
+        '<button type="button" class="btn btn-gold" id="prevPrintBtn">' + icon('printer', 15) + ' Print</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="cert-stage">' + renderCertificateHTML(list, cert) + '</div>';
+}
+
+function mountPreview(list, cert) {
+  /* EXPORT TO WORD — builds the .docx from the saved record. */
+  ef('prevExportBtn').addEventListener('click', function () { exportDocx(list, cert); });
+  ef('prevEditBtn').addEventListener('click', function () {
+    location.hash = '#/list/' + list.id + '/cert/' + cert.id + '/edit';
+  });
+  /* DELETE — confirm first, then remove the one record. */
+  ef('prevDeleteBtn').addEventListener('click', function () { deleteCertificate(list, cert); });
+  ef('prevPrintBtn').addEventListener('click', function () { window.print(); });
+}
+
+/* ---- 3.6d CERTIFICATE RECORD ACTIONS -------------------------
+   The ONE saved record per confirmand drives everything from the
+   preview. DELETE removes that record after a confirmation and
+   returns to the Certificate Workspace. EXPORT TO WORD builds a
+   real .docx in the browser — a minimal OOXML package (zip of
+   XML parts, written byte by byte, no library, no server) with
+   the same wording as the certificate and blanks where a field
+   was left unencoded. The file is named
+   Confirmation_Certificate_<Name>.docx; a small toast confirms
+   the download or reports a failure — never silence, and the
+   preview stays put. Nothing is re-entered or copied.          */
+
+function deleteCertificate(list, cert) {
+  var msg = 'Delete this certificate?\n\n\u201C' + cert.fullName + '\u201D will be permanently removed from ' +
+    list.name + '. This cannot be undone.';
+  if (!window.confirm(msg)) { return; }
+  list.certificates.splice(list.certificates.indexOf(cert), 1);
+  saveLists();
+  justSavedCertId = null;
+  /* Back to the Certificate Workspace, which re-reads the data. */
+  location.hash = '#/list/' + list.id;
+}
+
+/* --- Minimal ZIP (stored, no compression) + CRC32 -------------- */
+function crc32(buf) {
+  var t = crc32.table;
+  if (!t) {
+    t = crc32.table = new Int32Array(256);
+    for (var n = 0; n < 256; n++) {
+      var c = n;
+      for (var k = 0; k < 8; k++) { c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); }
+      t[n] = c;
+    }
+  }
+  var c = -1;
+  for (var i = 0; i < buf.length; i++) { c = (c >>> 8) ^ t[(c ^ buf[i]) & 0xFF]; }
+  return (c ^ -1) >>> 0;
+}
+function zipStore(files) {
+  var enc = new TextEncoder();
+  var parts = [], central = [], offset = 0;
+  var d = new Date();
+  var dosTime = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+  var dosDate = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  files.forEach(function (f) {
+    var name = enc.encode(f.name), data = enc.encode(f.data);
+    var crc = crc32(data);
+    var lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true);
+    lh.setUint16(4, 20, true);       /* version needed */
+    lh.setUint16(6, 0x0800, true);   /* UTF-8 names */
+    lh.setUint16(8, 0, true);        /* method: stored */
+    lh.setUint16(10, dosTime, true);
+    lh.setUint16(12, dosDate, true);
+    lh.setUint32(14, crc, true);
+    lh.setUint32(18, data.length, true);
+    lh.setUint32(22, data.length, true);
+    lh.setUint16(26, name.length, true);
+    lh.setUint16(28, 0, true);
+    parts.push(new Uint8Array(lh.buffer), name, data);
+    var ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true);
+    ch.setUint16(4, 20, true);       /* version made by */
+    ch.setUint16(6, 20, true);       /* version needed */
+    ch.setUint16(8, 0x0800, true);
+    ch.setUint16(12, dosTime, true);
+    ch.setUint16(14, dosDate, true);
+    ch.setUint32(16, crc, true);
+    ch.setUint32(20, data.length, true);
+    ch.setUint32(24, data.length, true);
+    ch.setUint16(28, name.length, true);
+    ch.setUint32(42, offset, true);
+    central.push(new Uint8Array(ch.buffer), name);
+    offset += 30 + name.length + data.length;
+  });
+  var centralSize = central.reduce(function (s, p) { return s + p.length; }, 0);
+  var eocd = new DataView(new ArrayBuffer(22));
+  eocd.setUint32(0, 0x06054b50, true);
+  eocd.setUint16(8, files.length, true);
+  eocd.setUint16(10, files.length, true);
+  eocd.setUint32(12, centralSize, true);
+  eocd.setUint32(16, offset, true);
+  var all = parts.concat(central, [new Uint8Array(eocd.buffer)]);
+  var total = all.reduce(function (s, p) { return s + p.length; }, 0);
+  var out = new Uint8Array(total), pos = 0;
+  all.forEach(function (p) { out.set(p, pos); pos += p.length; });
+  return out;
+}
+
+/* --- OOXML paragraphs (Word document.xml) ---------------------- */
+function dxRun(text, o) {
+  o = o || {};
+  return '<w:r><w:rPr>' +
+    (o.font ? '<w:rFonts w:ascii="' + o.font + '" w:hAnsi="' + o.font + '"/>' : '') +
+    (o.bold ? '<w:b/>' : '') + (o.italic ? '<w:i/>' : '') +
+    '<w:color w:val="' + (o.color || '1F2A3C') + '"/>' +
+    '<w:sz w:val="' + (o.sz || 22) + '"/><w:szCs w:val="' + (o.sz || 22) + '"/>' +
+    (o.underline ? '<w:u w:val="single"/>' : '') +
+    (o.caps ? '<w:caps/>' : '') +
+    '</w:rPr><w:t xml:space="preserve">' + text + '</w:t></w:r>';
+}
+function dxPara(text, o) {
+  o = o || {};
+  return '<w:p><w:pPr>' +
+    '<w:spacing w:before="' + (o.before || 0) + '" w:after="' + (o.after == null ? 120 : o.after) + '"/>' +
+    (o.center ? '<w:jc w:val="center"/>' : '') +
+    (o.rule ? '<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="' + (o.ruleColor || 'C9A227') + '"/></w:pBdr>' : '') +
+    (o.indent ? '<w:ind w:left="' + o.indent + '" w:right="' + o.indent + '"/>' : '') +
+    '</w:pPr>' + (text == null ? '' : dxRun(text, o)) + '</w:p>';
+}
+function dxSigCell(name, title) {
+  return '<w:tc><w:tcPr><w:tcW w:w="4680" w:type="dxa"/></w:tcPr>' +
+    '<w:p><w:pPr><w:spacing w:before="480" w:after="60"/>' +
+      '<w:pBdr><w:top w:val="single" w:sz="6" w:color="1B2A4A"/></w:pBdr><w:jc w:val="center"/></w:pPr></w:p>' +
+    '<w:p><w:pPr><w:spacing w:after="20"/><w:jc w:val="center"/></w:pPr>' +
+      (name ? dxRun(name, { font: 'Georgia', bold: true, sz: 24, color: '1B2A4A' }) : '') + '</w:p>' +
+    '<w:p><w:pPr><w:jc w:val="center"/></w:pPr>' + dxRun(title, { sz: 16, caps: true, color: '5D6B7E' }) + '</w:p></w:tc>';
+}
+function dxSigTable(leftName, rightName) {
+  var none = ['top', 'left', 'bottom', 'right', 'insideH', 'insideV'].map(function (s) {
+    return '<w:' + s + ' w:val="none" w:sz="0" w:space="0" w:color="auto"/>';
+  }).join('');
+  return '<w:tbl><w:tblPr><w:tblW w:w="9360" w:type="dxa"/><w:tblBorders>' + none +
+      '</w:tblBorders><w:tblLayout w:type="fixed"/></w:tblPr>' +
+    '<w:tblGrid><w:gridCol w:w="4680"/><w:gridCol w:w="4680"/></w:tblGrid>' +
+    '<w:tr>' + dxSigCell(leftName, 'Parish Priest') + dxSigCell(rightName, 'Confirmed by') + '</w:tr></w:tbl>';
+}
+
+/* The .docx parts for one saved record — same wording and blank
+   lines as the certificate preview. */
+function docxParts(list, cert) {
+  var dash = function (n) { return new Array(n + 1).join('_'); };
+  var priestName = priestDisplayName(list);
+  var bishopName = bishopDisplayName(cert);
+
+  var parentsLine = '';
+  if (cert.noFather) {
+    if (cert.motherName) { parentsLine = 'child of ' + esc(cert.motherName); }
+  } else {
+    parentsLine = 'child of ' + (cert.fatherName ? esc(cert.fatherName) : dash(24)) +
+      ' and ' + (cert.motherName ? esc(cert.motherName) : dash(24));
+  }
+
+  var P = [];
+  P.push(dxPara(esc(CONFIG.org.name), { center: true, font: 'Georgia', bold: true, sz: 32, color: '1B2A4A', after: 40 }));
+  P.push(dxPara('', { center: true, rule: true, indent: 2800, after: 60 }));
+  P.push(dxPara('Certificate of Confirmation', { center: true, font: 'Georgia', bold: true, sz: 44, color: '1B2A4A', before: 120, after: 140 }));
+  P.push(dxPara('This is to certify that', { center: true, before: 120 }));
+  P.push(dxPara(esc(cert.fullName), { center: true, font: 'Georgia', italic: true, sz: 40, color: '1B2A4A', underline: true, after: 160 }));
+  if (parentsLine) { P.push(dxPara(parentsLine, { center: true })); }
+  P.push(dxPara('baptized on the ' + (cert.baptismDate ? fmtFormalDate(cert.baptismDate) : dash(28)) +
+    ' at ' + (cert.baptismChurch ? esc(cert.baptismChurch) : dash(32)), { center: true }));
+  P.push(dxPara('has received the Sacrament of Confirmation', { center: true }));
+  P.push(dxPara('on the ' + (fmtFormalDate(list.date) || dash(30)) + '.', { center: true, after: 160 }));
+  P.push(dxPara('confirmed by ' + (bishopName || dash(36)), { center: true }));
+  P.push(dxPara('Sponsors: ' + (cert.sponsor1 ? esc(cert.sponsor1) : dash(22)) +
+    ' and ' + (cert.sponsor2 ? esc(cert.sponsor2) : dash(22)), { center: true }));
+  P.push(dxPara('Entered in the Book of Confirmation No. ' + (cert.bookNo ? esc(cert.bookNo) : dash(12)) +
+    ', Page ' + (cert.page ? esc(cert.page) : dash(8)) + ', Line ' + (cert.line ? esc(cert.line) : dash(8)) + '.', { center: true, after: 160 }));
+  P.push(dxSigTable(priestName, bishopName));
+  P.push(dxPara('Given this ' + (cert.issuanceDate ? fmtFormalDate(cert.issuanceDate) : dash(28)),
+    { center: true, italic: true, sz: 20, color: '5D6B7E', before: 240, after: 40 }));
+  P.push(dxPara('Purpose: ' + esc(cert.purpose || 'For Reference'), { center: true, sz: 18, color: '5D6B7E' }));
+
+  var documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
+    P.join('') +
+    '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>' +
+    '<w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr>' +
+    '</w:body></w:document>';
+  var contentTypes = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+    '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+    '<Default Extension="xml" ContentType="application/xml"/>' +
+    '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+    '</Types>';
+  var rels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+    '</Relationships>';
+  var docRels = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>';
+  return [
+    { name: '[Content_Types].xml', data: contentTypes },
+    { name: '_rels/.rels', data: rels },
+    { name: 'word/_rels/document.xml.rels', data: docRels },
+    { name: 'word/document.xml', data: documentXml }
+  ];
+}
+
+/* Small transient feedback near the bottom of the screen — the
+   export must never fail silently (and never navigate away). */
+function exportToast(msg, isError) {
+  var t = document.getElementById('exportToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'exportToast';
+    t.className = 'export-toast';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.classList.toggle('error', !!isError);
+  t.classList.add('show');
+  clearTimeout(exportToast.timer);
+  exportToast.timer = setTimeout(function () { t.classList.remove('show'); },
+    isError ? 10000 : 6000);
+}
+
+function exportDocx(list, cert) {
+  try {
+    var blob = new Blob([zipStore(docxParts(list, cert))],
+      { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+    var name = 'Confirmation_Certificate_' +
+      cert.fullName.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim() + '.docx';
+    if (window.navigator && navigator.msSaveBlob) {
+      navigator.msSaveBlob(blob, name);          /* legacy Edge/IE */
+    } else {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      /* Generous revoke window — Safari aborts short-lived URLs. */
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 10000);
+    }
+    /* Confirmation, plus a way out when embedded previews block
+       file downloads without telling the page. */
+    exportToast('Downloading ' + name + (window.self !== window.top
+      ? ' — if no download starts, open this page in its own browser tab.'
+      : ''), false);
+  } catch (err) {
+    exportToast('Export to Word failed: ' + (err && err.message ? err.message : err), true);
+  }
+}
+
+/* ---- 3.7 ROUTER --------------------------------------------- */
+function findList(id) {
+  for (var i = 0; i < lists.length; i++) { if (lists[i].id === id) { return lists[i]; } }
+  return null;
+}
+
+function navigate() {
+  if (encodeTeardown) { encodeTeardown(); encodeTeardown = null; }
+  var hash = location.hash.replace(/^#\/?/, '');
+  var app = document.getElementById('app');
+
+  if (hash.indexOf('list/') === 0) {
+    var parts = hash.slice(5).split('/');
+    var list = findList(parts[0]);
+    if (list) {
+      if (parts[1] === 'new') {
+        /* New Certificate encoding screen. */
+        app.innerHTML = renderEncode(list, null);
+        document.title = 'New Certificate · ' + list.name;
+        window.scrollTo(0, 0);
+        mountEncode(list, null);
+        return;
+      }
+      if (parts[1] === 'cert' && parts[2]) {
+        var cert = null;
+        (list.certificates || []).forEach(function (c) { if (c.id === parts[2]) { cert = c; } });
+        if (cert) {
+          if (parts[3] === 'edit') {
+            /* Edit the saved certificate, then SAVE returns here. */
+            app.innerHTML = renderEncode(list, cert);
+            document.title = 'Edit Certificate · ' + cert.fullName;
+            window.scrollTo(0, 0);
+            mountEncode(list, cert);
+            return;
+          }
+          app.innerHTML = renderPreview(list, cert);
+          document.title = 'Certificate · ' + cert.fullName;
+          window.scrollTo(0, 0);
+          mountPreview(list, cert);
+          return;
+        }
+      }
+      app.innerHTML = renderList(list);
+      document.title = list.name + ' · ' + CONFIG.org.name;
+      window.scrollTo(0, 0);
+      var newBtn = document.getElementById('newCertBtn');
+      if (newBtn) {
+        newBtn.addEventListener('click', function () {
+          location.hash = '#/list/' + list.id + '/new';
+        });
+      }
+      /* Every encoded certificate is clickable — it opens its preview. */
+      document.querySelectorAll('.cert-row').forEach(function (tr) {
+        var open = function () {
+          location.hash = '#/list/' + list.id + '/cert/' + tr.getAttribute('data-cert');
+        };
+        tr.addEventListener('click', open);
+        tr.addEventListener('keydown', function (e) { if (e.key === 'Enter') { open(); } });
+      });
+      return;
+    }
+  }
+
+  app.innerHTML = renderHub();
+  document.title = 'Confirmation Certification Workspace · ' + CONFIG.org.name;
+  window.scrollTo(0, 0);
+
+  /* Live filter — hides cards as you type; no re-render, focus stays. */
+  var input = document.getElementById('listSearch');
+  input.addEventListener('input', function () {
+    var q = this.value.trim().toLowerCase();
+    var shown = 0;
+    document.querySelectorAll('.list-card').forEach(function (card) {
+      var hit = !q || card.getAttribute('data-search').indexOf(q) !== -1;
+      card.style.display = hit ? '' : 'none';
+      if (hit) { shown++; }
+    });
+    document.getElementById('emptyQuery').textContent = this.value.trim();
+    /* Zero lists overall -> welcome empty state; otherwise a search miss. */
+    document.getElementById('hubEmpty').classList.toggle('show', lists.length === 0);
+    document.getElementById('searchEmpty').style.display = (lists.length > 0 && !shown) ? 'block' : 'none';
+  });
+
+  /* Show the welcome empty state on first paint (and after search resets). */
+  document.getElementById('hubEmpty').classList.toggle('show', lists.length === 0);
+  document.getElementById('addListBtn').addEventListener('click', openModal);
+}
+
+/* ---- 3.8 INIT ------------------------------------------------ */
+(function init() {
+  document.getElementById('brandLogo').innerHTML = crest(CONFIG.org.initials, 40);
+
+  /* Modal wiring — buttons, backdrop, Escape key. */
+  document.getElementById('modalClose').addEventListener('click', closeModal);
+  document.getElementById('modalCancel').addEventListener('click', closeModal);
+  overlay.addEventListener('mousedown', function (e) { if (e.target === overlay) { closeModal(); } });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && !overlay.hidden) { closeModal(); }
+  });
+  document.getElementById('createForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    createList();
+  });
+  ['listNameInput', 'listDateInput', 'listPriestInput'].forEach(function (id) {
+    document.getElementById(id).addEventListener('input', function () {
+      setError(this, this.id === 'listNameInput' ? 'nameError' : this.id === 'listPriestInput' ? 'priestError' : 'dateError', false);
+    });
+  });
+
+  if (!location.hash) {
+    try { history.replaceState(null, '', '#/workspace'); } catch (err) { /* hashless URL still opens the hub */ }
+  }
+  window.addEventListener('hashchange', navigate);
+  navigate();
+})();
+</script>
+</body>
+</html>
