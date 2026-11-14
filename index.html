@@ -27,7 +27,15 @@
       working exactly as before.
     • ONE saved record per confirmand serves preview, edit,
       delete, print and export — no copies, no parallel data.
-    • The parish certificate template remains exactly as it was.
+    • v1.0 replaces the generic foundation paper with the parish's
+      official BLANK certificate template, reproduced 1:1 from the
+      approved PDF (612 x 792 pt US Letter): crests, header block,
+      faded church watermark, bottom landscape and the approved
+      letter-spaced "Jesus I Trust in You" line. The template's own
+      images and fonts are embedded as data URIs; preview scales to
+      fit the screen and PRINT renders the paper 1:1 at Letter with
+      zero page margins. The confirmand data layout is a later step
+      and is deliberately not rendered yet.
 
   Deliberately NOT included yet: a database backend.
 
@@ -396,53 +404,95 @@ a { color: var(--accent-bright); }
 tr.row-new { animation: row-new 1.5s ease-out 1; }
 
 /* ---- 1f3. Certificate Preview --------------------------------
-   The certificate template comes from the original foundation
-   build and stays frozen — crest, parish line, ornament, title,
-   certify text, recipient, signature lines and date line. Its
-   colors are fixed values so it never changes with the theme. */
+   The certificate paper is the parish's official BLANK template,
+   reproduced 1:1 from the approved PDF (612 x 792 pt US Letter):
+   the two crests, the header block with its rule, the faded church
+   watermark, the bottom landscape and the approved letter-spaced
+   "Jesus I Trust in You" line. Every image keeps its exact template
+   coordinate and paint order; the header text uses the certificate's
+   own embedded fonts at the exact template baselines. Certificate
+   fonts load from certificate-assets/assets.js so the paper renders
+   identically on every machine and in print. */
+
+/* Certificate content fonts — embedded so the script names, the
+   sacrament title and the formal serif body render identically on
+   every machine and in print. (SIL OFL licensed.) */
 .cert-stage { display: flex; justify-content: center; padding: 20px 0 30px; }
+.cert-scale { width: 816px; height: 1056px; margin: 0 auto; flex: 0 0 auto; }
 .cert-frame {
-  max-width: 660px; width: 100%; margin: 0 auto; padding: 8px;
-  background: #FFFFFF;
-  border: 2px solid #1B2A4A; border-radius: 4px;
+  position: relative; width: 612pt; height: 792pt;
+  background: #FFFFFF; overflow: hidden;
   box-shadow: 0 10px 24px rgba(16, 24, 40, 0.12);
+  transform-origin: top left;
 }
-.cert-inner { padding: 34px 40px 30px; border: 1px solid #C9A227; text-align: center; }
-.cert-school-name { font-family: var(--font-heading); font-size: 23px; color: #1B2A4A; letter-spacing: 0.02em; }
-.cert-ornament { width: 130px; height: 0; border-top: 2px solid #C9A227; margin: 16px auto; }
-.cert-title { font-family: var(--font-heading); font-size: 29px; color: #1B2A4A; margin: 4px 0 2px; }
-.cert-body-text { font-size: 14.5px; margin: 12px 0; }
-.cert-recipient {
-  display: inline-block; padding: 0 30px 5px; margin: 2px 0 4px;
-  font-family: var(--font-heading); font-style: italic; font-size: 25px; color: #1B2A4A;
-  border-bottom: 1px dashed #B9C2CF;
-}
-.cert-sig-row { display: flex; justify-content: space-between; gap: 48px; margin-top: 42px; }
-.cert-sig { flex: 1; }
-.cert-sig-line { border-top: 1px solid #1B2A4A; margin-bottom: 6px; }
-.cert-sig-name { font-family: var(--font-heading); font-size: 15px; color: #1B2A4A; margin-bottom: 3px; }
-.cert-sig-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: #5D6B7E; }
-.cert-date { margin-top: 24px; font-size: 13px; font-style: italic; color: #5D6B7E; }
-.cert-date + .cert-date { margin-top: 6px; }
+/* Template images — exact template coordinates (pt) and paint order. */
+.tpl-img { position: absolute; display: block; }
+.tpl-crest-l     { left: 48.8pt;   top: 3.3pt;    width: 71.2pt;  height: 89.1pt; }
+.tpl-crest-r     { left: 481.5pt;  top: 12.6pt;   width: 71.9pt;  height: 78.6pt; }
+.tpl-patch-1     { left: 470.2pt;  top: 13.8pt;   width: 66.8pt;  height: 51.8pt; }
+.tpl-church-fade { left: 42pt;     top: 169pt;    width: 522pt;   height: 384pt; }
+.tpl-landscape   { left: -13.5pt;  top: 505.6pt;  width: 636pt;   height: 298.5pt; }
+.tpl-title-line  { left: 105pt;    top: 740.3pt;  width: 414pt;   height: 42pt; }
+.tpl-strap       { left: 382.9pt;  top: 559.9pt;  width: 167.3pt; height: 42pt; }
+/* Header block — exact template fonts, sizes, colors and baselines. */
+.tpl-header-svg { position: absolute; left: 0; top: 0; width: 612pt; height: 792pt; display: block; }
+.tpl-header-svg text { text-rendering: geometricPrecision; }
 .cert-blank {
-  display: inline-block; height: 1em; vertical-align: baseline;
-  border-bottom: 1px solid #B9C2CF;
+  display: inline-block; height: 0.95em; vertical-align: baseline;
+  border-bottom: 0.9pt solid #35404E;
 }
+/* Certificate content layer — sits in the blank middle area of the
+   template, on top of the faded church watermark, above the bottom
+   landscape. Ink color stays black like a printed parish record. */
+.cert-content {
+  position: absolute; left: 0; top: 0; width: 612pt; height: 792pt;
+  font-family: 'EB Garamond', Georgia, 'Times New Roman', serif;
+  color: #101418;
+}
+.cert-line {
+  position: absolute; left: 0; width: 100%;
+  text-align: center; line-height: 1.1; white-space: nowrap;
+}
+.cert-body   { font-size: 13pt; }
+.cert-value  { font-size: 15pt; }
+.cert-record { font-size: 12pt; }
+.cert-lead   { font-size: 13pt; font-style: italic; }
+.cert-name-script {
+  font-family: 'Great Vibes', 'Segoe Script', cursive;
+  font-size: 28pt; line-height: 1;
+}
+.cert-sacrament {
+  font-family: 'Great Vibes', 'Segoe Script', cursive;
+  font-size: 30pt; line-height: 1;
+}
+.cert-record-block { left: 88pt; width: 280pt; text-align: left; }
+.cert-sign {
+  position: absolute; left: 380pt; width: 196pt;
+  text-align: center; line-height: 1.2;
+}
+.cert-sign-name {
+  font-size: 11.5pt; text-transform: uppercase;
+  letter-spacing: 0.04em; font-weight: 600; white-space: nowrap;
+}
+.cert-sign-rule { border-top: 0.9pt solid #101418; margin-top: 3pt; }
+.cert-sign-title { font-size: 10.5pt; font-style: italic; margin-top: 3pt; }
 
 /* Clickable certificate rows in the Certificate Workspace. */
 .cert-row { cursor: pointer; }
 .cell-go { width: 46px; text-align: right; color: var(--muted); }
 
-/* PRINT — the browser's native dialog prints only the certificate. */
+/* PRINT — the browser's native dialog prints only the certificate,
+   1:1 at US Letter (612 x 792 pt) with zero page margins. */
 @media print {
   body { background: #fff !important; }
   .topbar, .footer, .back-link, .workspace-head { display: none !important; }
   .export-toast { display: none !important; }
   .content { max-width: none; padding: 0; }
-  .cert-stage { padding: 0; }
-  .cert-frame { max-width: none; box-shadow: none; border-radius: 0; }
+  .cert-stage { padding: 0; display: block; }
+  .cert-scale { width: auto !important; height: auto !important; margin: 0; }
+  .cert-frame { box-shadow: none; transform: none !important; }
 }
-@page { size: A4 portrait; margin: 12mm; }
+@page { size: letter portrait; margin: 0; }
 
 @media (max-width: 700px) {
   .cert-inner { padding: 24px 14px; }
@@ -534,6 +584,7 @@ tr.row-new { animation: row-new 1.5s ease-out 1; }
   </div>
 </div>
 
+<script src="certificate-assets/assets.js"></script>
 <script>
 /* ============================================================
    3. APPLICATION SCRIPT
@@ -1142,6 +1193,21 @@ function saveCertificate(list, cert) {
    as a blank line, and "No father listed" leaves the father out
    entirely (never "N/A" or "None").                            */
 
+/* Certificate template assets — the approved blank certificate's
+   images and fonts, loaded from certificate-assets/assets.js next
+   to this file; the app shows a notice if that file is missing. */
+var TPL = window.CERT_TPL || null;
+if (!TPL) {
+  document.addEventListener('DOMContentLoaded', function () {
+    var b = document.createElement('div');
+    b.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99999;' +
+      'background:#8a1c1c;color:#fff;font:13px/1.5 Arial,sans-serif;padding:12px 18px;text-align:center';
+    b.innerHTML = '<b>Template assets not found.</b> Upload <code>certificate-assets/assets.js</code> ' +
+      'next to this HTML file, then reload.';
+    document.body.appendChild(b);
+  });
+}
+
 function certBlank(width) {
   return '<span class="cert-blank" style="width:' + (width || 140) + 'px"></span>';
 }
@@ -1156,56 +1222,130 @@ function bishopDisplayName(cert) {
   return /^most\s+rev\.?\s*/i.test(raw) ? esc(raw) : 'Most Rev. ' + esc(raw);
 }
 
-function renderCertificateHTML(list, cert) {
-  var priestName = priestDisplayName(list);
-  var bishopName = bishopDisplayName(cert);
+/* Date helpers for the certificate wording — split an ISO date into
+   the ordinal day, month name and year the certificate prints.
+   (Reuses MONTHS / ordinalDay; mirrors fmtFormalDate.) */
+function dateParts(iso) {
+  var p = String(iso || '').split('-');
+  var y = +p[0], m = +p[1], d = +p[2];
+  if (p.length !== 3 || !y || m < 1 || m > 12 || d < 1 || d > 31) { return null; }
+  return { day: d, ord: ordinalDay(d), month: MONTHS[m - 1], year: p[0] };
+}
+function dateLong(iso) {
+  var p = dateParts(iso);
+  return p ? p.month + ' ' + p.day + ', ' + p.year : '';
+}
 
-  var parentsLine = '';
-  if (cert.noFather) {
-    if (cert.motherName) { parentsLine = 'child of ' + esc(cert.motherName); }
-  } else {
-    parentsLine = 'child of ' + (cert.fatherName ? esc(cert.fatherName) : certBlank(150)) +
-      ' and ' + (cert.motherName ? esc(cert.motherName) : certBlank(150));
+function renderCertificateHTML(list, cert) {
+  if (!TPL) {
+    return '<div class="cert-frame" style="display:flex;align-items:center;justify-content:center">' +
+      '<div style="max-width:430px;text-align:center;font:15px/1.7 Arial,sans-serif;color:#8a1c1c">' +
+      '<b>Template assets missing.</b><br>Upload <code>certificate-assets/assets.js</code> ' +
+      'next to this HTML file, then reload to see the certificate.</div></div>';
+  }
+  /* The parish certificate template, 1:1 from the approved PDF, with
+     the certificate content placed in the blank middle area. The
+     blank sequence matches the encoding form field order exactly:
+     1 full name, 2 father, 3 mother, 4-6 baptism day/month/year,
+     7 baptism church, 8-10 confirmation day/month/year (inherited
+     from the list), 11 confirming bishop, 12-13 sponsors, 14-16
+     book/page/line, 17 date of issuance. Purpose is fixed text.
+     The parish priest comes from the list and prints ALL CAPS above
+     the signature line. */
+
+  /* Header text + rule at exact template geometry:
+     Divine Mercy Parish          x 195.93  baseline 44.34  ArialMT 24pt  #FF0000
+     A Place of Healing & Miracle x 218.91  baseline 63.43  Corbel-BI 14pt #000
+     Brgy. Biluso, Silang, ...    x 195.68  baseline 78.62  Corbel 12pt    #000
+     rule                         x 144..461  y 82.5  black */
+  var headerSvg =
+    '<svg class="tpl-header-svg" viewBox="0 0 612 792" aria-hidden="true">' +
+      '<text x="195.93" y="44.34" font-family="DMP ArialMT, Arial, sans-serif" font-size="24" fill="#FF0000">Divine Mercy Parish</text>' +
+      '<text x="218.91" y="63.43" font-family="DMP Corbel-BoldItalic, Corbel, sans-serif" font-style="italic" font-size="14" fill="#000000">A Place of Healing &amp; Miracle</text>' +
+      '<text x="195.68" y="78.62" font-family="DMP Corbel, Corbel, sans-serif" font-size="12" fill="#000000">Brgy. Biluso, Silang, Cavite 4118 Philippines</text>' +
+      '<line x1="144" y1="82.5" x2="461" y2="82.5" stroke="#000000" stroke-width="0.75"/>' +
+    '</svg>';
+
+  var c = cert || {};
+  var L = list || {};
+
+  /* Field values; an empty field prints a blank line to fill in by hand. */
+  var bp = dateParts(c.baptismDate);            /* 4-6 baptism day/month/year   */
+  var cp = dateParts(L.date);                   /* 8-10 confirmation day/month/year */
+  var fatherPart = c.noFather ? certBlank(170) :
+    (c.fatherName ? esc(c.fatherName) : certBlank(170));
+  var motherPart = c.motherName ? esc(c.motherName) : certBlank(170);
+  var churchPart = c.baptismChurch ? esc(c.baptismChurch) : certBlank(240);
+  var bishopPart = c.confirmedBy ? esc(bishopDisplayName(c)) : 'Most Rev. ' + certBlank(170);
+  var s1Part = c.sponsor1 ? esc(c.sponsor1) : certBlank(150);
+  var s2Part = c.sponsor2 ? esc(c.sponsor2) : certBlank(150);
+  var bookPart = c.bookNo ? esc(c.bookNo) : certBlank(44);
+  var pagePart = c.page ? esc(c.page) : certBlank(30);
+  var linePart = c.line ? esc(c.line) : certBlank(30);
+  var issuedPart = c.issuanceDate ? fmtFormalDate(c.issuanceDate) : certBlank(170);
+  var priestPart = priestDisplayName(L);
+
+  /* One positioned line; tops are measured in pt on the 612x792 paper. */
+  function ln(top, cls, html) {
+    return '<div class="cert-line ' + cls + '" style="top:' + top + 'pt">' + html + '</div>';
   }
 
-  var baptismLine = 'baptized on the ' +
-    (cert.baptismDate ? fmtFormalDate(cert.baptismDate) : certBlank(170)) +
-    ' at ' + (cert.baptismChurch ? esc(cert.baptismChurch) : certBlank(200));
+  var content =
+    '<div class="cert-content">' +
+      /* 1 · This certifies that + 1 confirmand full name */
+      ln(210, 'cert-lead', 'This certifies that') +
+      ln(232, 'cert-name-script', c.fullName ? esc(c.fullName) : certBlank(300)) +
+      /* 2-3 · child of father and mother */
+      ln(266, 'cert-body', 'child of') +
+      ln(287, 'cert-value', fatherPart + ' and ' + motherPart) +
+      /* 4-7 · baptism day / month / year + church */
+      ln(310, 'cert-body',
+        'baptized on the ' + (bp ? bp.ord : certBlank(26)) + ' day of ' +
+        (bp ? bp.month : certBlank(64)) + ', ' + (bp ? bp.year : certBlank(38))) +
+      ln(331, 'cert-body', 'in the church of') +
+      ln(352, 'cert-value', churchPart) +
+      /* 8-10 · received the sacrament on the list's confirmation date */
+      ln(375, 'cert-body', 'received') +
+      ln(396, 'cert-sacrament', 'The Holy Sacrament of Confirmation') +
+      ln(432, 'cert-body',
+        'on the ' + (cp ? cp.ord : certBlank(26)) + ' of ' +
+        (cp ? cp.month : certBlank(64)) + ', ' + (cp ? cp.year : certBlank(38))) +
+      /* 11 · confirming bishop */
+      ln(452, 'cert-body', 'according to the Rites of the Roman Catholic Church by') +
+      ln(472, 'cert-value', bishopPart) +
+      /* 12-13 · sponsors */
+      ln(494, 'cert-body', 'the sponsors being') +
+      ln(513, 'cert-value', s1Part + ' and ' + s2Part) +
+      /* 14-17 · registry record + issuance + purpose */
+      ln(534, 'cert-record',
+        'As appears in the Confirmation Book No. ' + bookPart +
+        ', Page ' + pagePart + ', Line ' + linePart + '.') +
+      ln(548, 'cert-line cert-record cert-record-block',
+        'Date of Issuance: ' + issuedPart) +
+      ln(567, 'cert-line cert-record cert-record-block',
+        'Purpose: ' + esc(c.purpose || 'For Reference')) +
+      /* Parish priest signature — lower right, name ALL CAPS above the line */
+      '<div class="cert-sign" style="top:548pt">' +
+        '<div class="cert-sign-name">' + (priestPart || '&nbsp;') + '</div>' +
+        '<div class="cert-sign-rule"></div>' +
+        '<div class="cert-sign-title">Parish Priest</div>' +
+      '</div>' +
+    '</div>';
 
-  var sponsorsLine = 'Sponsors: ' + (cert.sponsor1 ? esc(cert.sponsor1) : certBlank(140)) +
-    ' and ' + (cert.sponsor2 ? esc(cert.sponsor2) : certBlank(140));
-
-  var registryLine = 'Entered in the Book of Confirmation No. ' +
-    (cert.bookNo ? esc(cert.bookNo) : certBlank(80)) +
-    ', Page ' + (cert.page ? esc(cert.page) : certBlank(60)) +
-    ', Line ' + (cert.line ? esc(cert.line) : certBlank(60)) + '.';
-
-  return '<div class="cert-frame" id="certPaper"><div class="cert-inner">' +
-    '<div style="margin-bottom:10px;">' + crest(CONFIG.org.initials, 64, '#1B2A4A', 'rgba(201,162,39,0.12)', '#1B2A4A') + '</div>' +
-    '<div class="cert-school-name">' + esc(CONFIG.org.name) + '</div>' +
-    '<div class="cert-ornament"></div>' +
-    '<div class="cert-title">Certificate of Confirmation</div>' +
-    '<p class="cert-body-text">This is to certify that</p>' +
-    '<div class="cert-recipient">' + esc(cert.fullName) + '</div>' +
-    (parentsLine ? '<p class="cert-body-text">' + parentsLine + '</p>' : '') +
-    '<p class="cert-body-text">' + baptismLine + '</p>' +
-    '<p class="cert-body-text">has received the Sacrament of Confirmation<br>on the ' +
-      (fmtFormalDate(list.date) || certBlank(190)) + '.</p>' +
-    '<p class="cert-body-text">confirmed by ' + (bishopName || certBlank(230)) + '</p>' +
-    '<p class="cert-body-text">' + sponsorsLine + '</p>' +
-    '<p class="cert-body-text">' + registryLine + '</p>' +
-    '<div class="cert-sig-row">' +
-      '<div class="cert-sig"><div class="cert-sig-line"></div>' +
-        (priestName ? '<div class="cert-sig-name">' + priestName + '</div>' : '') +
-        '<div class="cert-sig-title">Parish Priest</div></div>' +
-      '<div class="cert-sig"><div class="cert-sig-line"></div>' +
-        (bishopName ? '<div class="cert-sig-name">' + bishopName + '</div>' : '') +
-        '<div class="cert-sig-title">Confirmed by</div></div>' +
-    '</div>' +
-    '<div class="cert-date">Given this ' +
-      (cert.issuanceDate ? fmtFormalDate(cert.issuanceDate) : certBlank(180)) + '</div>' +
-    '<div class="cert-date">Purpose: ' + esc(cert.purpose || 'For Reference') + '</div>' +
-  '</div></div>';
+  return '<div class="cert-frame" id="certPaper">' +
+    headerSvg +
+    /* Crest arrangement follows the approved reference exactly:
+       multicolor seal LEFT, gold crest RIGHT (box geometry tuned so
+       each artwork's ink sits at its template-PDF coordinates). */
+    '<img class="tpl-img tpl-crest-l" src="' + TPL.crestR + '" alt="">' +
+    '<img class="tpl-img tpl-crest-r" src="' + TPL.crestL + '" alt="">' +
+    '<img class="tpl-img tpl-patch-1" src="' + TPL.patch1 + '" alt="">' +
+    '<img class="tpl-img tpl-church-fade" src="' + TPL.churchFade + '" alt="">' +
+    '<img class="tpl-img tpl-landscape" src="' + TPL.landscape + '" alt="">' +
+    '<img class="tpl-img tpl-title-line" src="' + TPL.titleLine + '" alt="">' +
+    '<img class="tpl-img tpl-strap" src="' + TPL.strap + '" alt="">' +
+    content +
+  '</div>';
 }
 
 function renderPreview(list, cert) {
@@ -1221,7 +1361,7 @@ function renderPreview(list, cert) {
         '<button type="button" class="btn btn-gold" id="prevPrintBtn">' + icon('printer', 15) + ' Print</button>' +
       '</div>' +
     '</div>' +
-    '<div class="cert-stage">' + renderCertificateHTML(list, cert) + '</div>';
+    '<div class="cert-stage"><div class="cert-scale" id="certScale">' + renderCertificateHTML(list, cert) + '</div></div>';
 }
 
 function mountPreview(list, cert) {
@@ -1233,6 +1373,23 @@ function mountPreview(list, cert) {
   /* DELETE — confirm first, then remove the one record. */
   ef('prevDeleteBtn').addEventListener('click', function () { deleteCertificate(list, cert); });
   ef('prevPrintBtn').addEventListener('click', function () { window.print(); });
+
+  /* Scale the fixed-size certificate paper to fit the screen width.
+     Print always renders the paper 1:1 (see the print stylesheet). */
+  function fitCertificate() {
+    var paper = document.getElementById('certPaper');
+    var wrap = document.getElementById('certScale');
+    if (!paper || !wrap) { return; }
+    var avail = (wrap.parentElement ? wrap.parentElement.clientWidth : window.innerWidth) - 8;
+    var s = Math.min(1, avail / paper.offsetWidth);
+    paper.style.transform = s < 1 ? 'scale(' + s + ')' : '';
+    wrap.style.width = (paper.offsetWidth * s) + 'px';
+    wrap.style.height = (paper.offsetHeight * s) + 'px';
+  }
+  fitCertificate();
+  if (window.__certFitHandler) { window.removeEventListener('resize', window.__certFitHandler); }
+  window.__certFitHandler = fitCertificate;
+  window.addEventListener('resize', fitCertificate);
 }
 
 /* ---- 3.6d CERTIFICATE RECORD ACTIONS -------------------------
@@ -1370,39 +1527,62 @@ function docxParts(list, cert) {
   var priestName = priestDisplayName(list);
   var bishopName = bishopDisplayName(cert);
 
-  var parentsLine = '';
-  if (cert.noFather) {
-    if (cert.motherName) { parentsLine = 'child of ' + esc(cert.motherName); }
-  } else {
-    parentsLine = 'child of ' + (cert.fatherName ? esc(cert.fatherName) : dash(24)) +
-      ' and ' + (cert.motherName ? esc(cert.motherName) : dash(24));
+  /* Wording mirrors the certificate preview exactly, in the same
+     field sequence. Empty fields print as blank rules. */
+  var bp = dateParts(cert.baptismDate);
+  var cp = dateParts(list.date);
+  var fatherPart = cert.noFather ? dash(24) :
+    (cert.fatherName ? esc(cert.fatherName) : dash(24));
+  var motherPart = cert.motherName ? esc(cert.motherName) : dash(24);
+  var churchPart = cert.baptismChurch ? esc(cert.baptismChurch) : dash(32);
+  var bishopPart = cert.confirmedBy ? esc(bishopDisplayName(cert)) : 'Most Rev. ' + dash(26);
+  var s1Part = cert.sponsor1 ? esc(cert.sponsor1) : dash(22);
+  var s2Part = cert.sponsor2 ? esc(cert.sponsor2) : dash(22);
+  var bookPart = cert.bookNo ? esc(cert.bookNo) : dash(8);
+  var pagePart = cert.page ? esc(cert.page) : dash(5);
+  var linePart = cert.line ? esc(cert.line) : dash(5);
+  var issuedPart = cert.issuanceDate ? fmtFormalDate(cert.issuanceDate) : dash(28);
+  var priestName = priestDisplayName(list).toUpperCase();
+
+  /* Right-hand signature block: name above the rule, title under it. */
+  function dxSigBlock() {
+    var ind = '<w:ind w:left="6480"/>';
+    var jc = '<w:jc w:val="center"/>';
+    return '<w:p><w:pPr><w:spacing w:before="480" w:after="40"/>' + ind + jc + '</w:pPr>' +
+      (priestName ? dxRun(priestName, { font: 'Georgia', sz: 22, color: '1B2A4A' }) : '') + '</w:p>' +
+      '<w:p><w:pPr>' + ind +
+      '<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="1B2A4A"/></w:pBdr></w:pPr></w:p>' +
+      '<w:p><w:pPr><w:spacing w:after="20"/>' + ind + jc + '</w:pPr>' +
+      dxRun('Parish Priest', { font: 'Georgia', italic: true, sz: 20, color: '5D6B7E' }) + '</w:p>';
   }
 
   var P = [];
-  P.push(dxPara(esc(CONFIG.org.name), { center: true, font: 'Georgia', bold: true, sz: 32, color: '1B2A4A', after: 40 }));
-  P.push(dxPara('', { center: true, rule: true, indent: 2800, after: 60 }));
-  P.push(dxPara('Certificate of Confirmation', { center: true, font: 'Georgia', bold: true, sz: 44, color: '1B2A4A', before: 120, after: 140 }));
-  P.push(dxPara('This is to certify that', { center: true, before: 120 }));
-  P.push(dxPara(esc(cert.fullName), { center: true, font: 'Georgia', italic: true, sz: 40, color: '1B2A4A', underline: true, after: 160 }));
-  if (parentsLine) { P.push(dxPara(parentsLine, { center: true })); }
-  P.push(dxPara('baptized on the ' + (cert.baptismDate ? fmtFormalDate(cert.baptismDate) : dash(28)) +
-    ' at ' + (cert.baptismChurch ? esc(cert.baptismChurch) : dash(32)), { center: true }));
-  P.push(dxPara('has received the Sacrament of Confirmation', { center: true }));
-  P.push(dxPara('on the ' + (fmtFormalDate(list.date) || dash(30)) + '.', { center: true, after: 160 }));
-  P.push(dxPara('confirmed by ' + (bishopName || dash(36)), { center: true }));
-  P.push(dxPara('Sponsors: ' + (cert.sponsor1 ? esc(cert.sponsor1) : dash(22)) +
-    ' and ' + (cert.sponsor2 ? esc(cert.sponsor2) : dash(22)), { center: true }));
-  P.push(dxPara('Entered in the Book of Confirmation No. ' + (cert.bookNo ? esc(cert.bookNo) : dash(12)) +
-    ', Page ' + (cert.page ? esc(cert.page) : dash(8)) + ', Line ' + (cert.line ? esc(cert.line) : dash(8)) + '.', { center: true, after: 160 }));
-  P.push(dxSigTable(priestName, bishopName));
-  P.push(dxPara('Given this ' + (cert.issuanceDate ? fmtFormalDate(cert.issuanceDate) : dash(28)),
-    { center: true, italic: true, sz: 20, color: '5D6B7E', before: 240, after: 40 }));
-  P.push(dxPara('Purpose: ' + esc(cert.purpose || 'For Reference'), { center: true, sz: 18, color: '5D6B7E' }));
+  P.push(dxPara('This certifies that', { center: true, before: 120 }));
+  P.push(dxPara(esc(cert.fullName) || dash(30), { center: true, font: 'Great Vibes', sz: 56, after: 100 }));
+  P.push(dxPara('child of', { center: true }));
+  P.push(dxPara(fatherPart + ' and ' + motherPart, { center: true, sz: 24 }));
+  P.push(dxPara('baptized on the ' + (bp ? bp.ord : dash(8)) + ' day of ' +
+    (bp ? bp.month : dash(14)) + ', ' + (bp ? bp.year : dash(10)), { center: true }));
+  P.push(dxPara('in the church of', { center: true }));
+  P.push(dxPara(churchPart, { center: true, sz: 24 }));
+  P.push(dxPara('received', { center: true }));
+  P.push(dxPara('The Holy Sacrament of Confirmation', { center: true, font: 'Great Vibes', sz: 60, before: 40, after: 60 }));
+  P.push(dxPara('on the ' + (cp ? cp.ord : dash(8)) + ' of ' +
+    (cp ? cp.month : dash(14)) + ', ' + (cp ? cp.year : dash(10)), { center: true }));
+  P.push(dxPara('according to the Rites of the Roman Catholic Church by', { center: true }));
+  P.push(dxPara(bishopPart, { center: true, sz: 24 }));
+  P.push(dxPara('the sponsors being', { center: true }));
+  P.push(dxPara(s1Part + ' and ' + s2Part, { center: true, sz: 24 }));
+  P.push(dxPara('As appears in the Confirmation Book No. ' + bookPart +
+    ', Page ' + pagePart + ', Line ' + linePart + '.', { center: true, before: 120 }));
+  P.push(dxPara('Date of Issuance: ' + issuedPart, { center: true }));
+  P.push(dxPara('Purpose: ' + esc(cert.purpose || 'For Reference'), { center: true, after: 60 }));
+  P.push(dxSigBlock());
 
   var documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
     P.join('') +
-    '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/>' +
+    '<w:sectPr><w:pgSz w:w="12240" w:h="15840"/>' +
     '<w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr>' +
     '</w:body></w:document>';
   var contentTypes = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
@@ -1588,4 +1768,4 @@ function navigate() {
 })();
 </script>
 </body>
-</html>
+</html>  
