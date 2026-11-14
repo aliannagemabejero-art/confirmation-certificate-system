@@ -453,17 +453,21 @@ tr.row-new { animation: row-new 1.5s ease-out 1; }
   position: absolute; left: 0; width: 100%;
   text-align: center; line-height: 1.1; white-space: nowrap;
 }
-.cert-body   { font-size: 13pt; }
-.cert-value  { font-size: 15pt; }
-.cert-record { font-size: 12pt; }
-.cert-lead   { font-size: 13pt; font-style: italic; }
+/* Typographic hierarchy — structural wording stays small and
+   secondary; everything the encoder types is emphasized. The
+   sacrament title remains the strongest element on the paper. */
+.cert-body   { font-size: 11.5pt; }
+.cert-value  { font-size: 16pt; font-weight: 600; letter-spacing: 0.015em; }
+.cert-record { font-size: 11pt; }
+.cert-record .cert-value { font-size: 13pt; letter-spacing: 0.01em; }
+.cert-lead   { font-size: 12pt; font-style: italic; }
 .cert-name-script {
   font-family: 'Great Vibes', 'Segoe Script', cursive;
-  font-size: 28pt; line-height: 1;
+  font-size: 32pt; line-height: 1;
 }
 .cert-sacrament {
   font-family: 'Great Vibes', 'Segoe Script', cursive;
-  font-size: 30pt; line-height: 1;
+  font-size: 35pt; line-height: 1;
 }
 .cert-record-block { left: 88pt; width: 280pt; text-align: left; }
 .cert-sign {
@@ -1276,7 +1280,6 @@ function renderCertificateHTML(list, cert) {
     (c.fatherName ? esc(c.fatherName) : certBlank(170));
   var motherPart = c.motherName ? esc(c.motherName) : certBlank(170);
   var churchPart = c.baptismChurch ? esc(c.baptismChurch) : certBlank(240);
-  var bishopPart = c.confirmedBy ? esc(bishopDisplayName(c)) : 'Most Rev. ' + certBlank(170);
   var s1Part = c.sponsor1 ? esc(c.sponsor1) : certBlank(150);
   var s2Part = c.sponsor2 ? esc(c.sponsor2) : certBlank(150);
   var bookPart = c.bookNo ? esc(c.bookNo) : certBlank(44);
@@ -1289,40 +1292,52 @@ function renderCertificateHTML(list, cert) {
   function ln(top, cls, html) {
     return '<div class="cert-line ' + cls + '" style="top:' + top + 'pt">' + html + '</div>';
   }
+  /* Typed data is emphasized (larger, stronger); the structural
+     wording around it stays small and secondary. */
+  function val(html) {
+    return '<span class="cert-value">' + html + '</span>';
+  }
 
+  /* Vertical distribution uses the full Letter page: the block opens
+     high under the parish header, each typed value sits close to its
+     connector, groups are separated by generous gaps, and the record
+     block spreads across the top of the bottom landscape. */
   var content =
     '<div class="cert-content">' +
-      /* 1 · This certifies that + 1 confirmand full name */
-      ln(210, 'cert-lead', 'This certifies that') +
-      ln(232, 'cert-name-script', c.fullName ? esc(c.fullName) : certBlank(300)) +
+      /* 1 · This certifies that + 1 confirmand full name — the name is
+         the second-strongest element, after the sacrament title */
+      ln(112, 'cert-lead', 'This certifies that') +
+      ln(136, 'cert-name-script', c.fullName ? esc(c.fullName) : certBlank(300)) +
       /* 2-3 · child of father and mother */
-      ln(266, 'cert-body', 'child of') +
-      ln(287, 'cert-value', fatherPart + ' and ' + motherPart) +
+      ln(178, 'cert-body', 'child of') +
+      ln(196, 'cert-body', val(fatherPart) + ' and ' + val(motherPart)) +
       /* 4-7 · baptism day / month / year + church */
-      ln(310, 'cert-body',
-        'baptized on the ' + (bp ? bp.ord : certBlank(26)) + ' day of ' +
-        (bp ? bp.month : certBlank(64)) + ', ' + (bp ? bp.year : certBlank(38))) +
-      ln(331, 'cert-body', 'in the church of') +
-      ln(352, 'cert-value', churchPart) +
+      ln(224, 'cert-body',
+        'baptized on the ' + val(bp ? bp.ord : certBlank(26)) + ' day of ' +
+        val(bp ? bp.month : certBlank(64)) + ', ' + val(bp ? bp.year : certBlank(38))) +
+      ln(254, 'cert-body', 'in the church of') +
+      ln(272, 'cert-body', val(churchPart)) +
       /* 8-10 · received the sacrament on the list's confirmation date */
-      ln(375, 'cert-body', 'received') +
-      ln(396, 'cert-sacrament', 'The Holy Sacrament of Confirmation') +
-      ln(432, 'cert-body',
-        'on the ' + (cp ? cp.ord : certBlank(26)) + ' of ' +
-        (cp ? cp.month : certBlank(64)) + ', ' + (cp ? cp.year : certBlank(38))) +
+      ln(304, 'cert-body', 'received') +
+      ln(324, 'cert-sacrament', 'The Holy Sacrament of Confirmation') +
+      ln(374, 'cert-body',
+        'on the ' + val(cp ? cp.ord : certBlank(26)) + ' of ' +
+        val(cp ? cp.month : certBlank(64)) + ', ' + val(cp ? cp.year : certBlank(38))) +
       /* 11 · confirming bishop */
-      ln(452, 'cert-body', 'according to the Rites of the Roman Catholic Church by') +
-      ln(472, 'cert-value', bishopPart) +
+      ln(406, 'cert-body', 'according to the Rites of the Roman Catholic Church by') +
+      ln(424, 'cert-body', 'Most Rev. ' +
+        val(c.confirmedBy ? bishopDisplayName(c).replace(/^most\s+rev\.?\s*/i, '') : certBlank(170))) +
       /* 12-13 · sponsors */
-      ln(494, 'cert-body', 'the sponsors being') +
-      ln(513, 'cert-value', s1Part + ' and ' + s2Part) +
-      /* 14-17 · registry record + issuance + purpose */
-      ln(534, 'cert-record',
-        'As appears in the Confirmation Book No. ' + bookPart +
-        ', Page ' + pagePart + ', Line ' + linePart + '.') +
+      ln(458, 'cert-body', 'the sponsors being') +
+      ln(476, 'cert-body', val(s1Part) + ' and ' + val(s2Part)) +
+      /* 14-17 · registry record + issuance + purpose — spread across
+         the top of the bottom landscape with breathing room */
+      ln(520, 'cert-record',
+        'As appears in the Confirmation Book No. ' + val(bookPart) +
+        ', Page ' + val(pagePart) + ', Line ' + val(linePart) + '.') +
       ln(548, 'cert-line cert-record cert-record-block',
-        'Date of Issuance: ' + issuedPart) +
-      ln(567, 'cert-line cert-record cert-record-block',
+        'Date of Issuance: ' + val(issuedPart)) +
+      ln(574, 'cert-line cert-record cert-record-block',
         'Purpose: ' + esc(c.purpose || 'For Reference')) +
       /* Parish priest signature — lower right, name ALL CAPS above the line */
       '<div class="cert-sign" style="top:548pt">' +
@@ -1556,27 +1571,30 @@ function docxParts(list, cert) {
       dxRun('Parish Priest', { font: 'Georgia', italic: true, sz: 20, color: '5D6B7E' }) + '</w:p>';
   }
 
+  /* Word export mirrors the certificate's typographic hierarchy:
+     structural wording small, typed data larger, the sacrament
+     title the strongest element. */
   var P = [];
-  P.push(dxPara('This certifies that', { center: true, before: 120 }));
-  P.push(dxPara(esc(cert.fullName) || dash(30), { center: true, font: 'Great Vibes', sz: 56, after: 100 }));
-  P.push(dxPara('child of', { center: true }));
-  P.push(dxPara(fatherPart + ' and ' + motherPart, { center: true, sz: 24 }));
+  P.push(dxPara('This certifies that', { center: true, italic: true, sz: 23, before: 200 }));
+  P.push(dxPara(esc(cert.fullName) || dash(30), { center: true, font: 'Great Vibes', sz: 64, after: 100 }));
+  P.push(dxPara('child of', { center: true, sz: 23 }));
+  P.push(dxPara(fatherPart + ' and ' + motherPart, { center: true, sz: 32 }));
   P.push(dxPara('baptized on the ' + (bp ? bp.ord : dash(8)) + ' day of ' +
-    (bp ? bp.month : dash(14)) + ', ' + (bp ? bp.year : dash(10)), { center: true }));
-  P.push(dxPara('in the church of', { center: true }));
-  P.push(dxPara(churchPart, { center: true, sz: 24 }));
-  P.push(dxPara('received', { center: true }));
-  P.push(dxPara('The Holy Sacrament of Confirmation', { center: true, font: 'Great Vibes', sz: 60, before: 40, after: 60 }));
+    (bp ? bp.month : dash(14)) + ', ' + (bp ? bp.year : dash(10)), { center: true, sz: 26 }));
+  P.push(dxPara('in the church of', { center: true, sz: 23 }));
+  P.push(dxPara(churchPart, { center: true, sz: 32 }));
+  P.push(dxPara('received', { center: true, sz: 23 }));
+  P.push(dxPara('The Holy Sacrament of Confirmation', { center: true, font: 'Great Vibes', sz: 70, before: 40, after: 60 }));
   P.push(dxPara('on the ' + (cp ? cp.ord : dash(8)) + ' of ' +
-    (cp ? cp.month : dash(14)) + ', ' + (cp ? cp.year : dash(10)), { center: true }));
-  P.push(dxPara('according to the Rites of the Roman Catholic Church by', { center: true }));
-  P.push(dxPara(bishopPart, { center: true, sz: 24 }));
-  P.push(dxPara('the sponsors being', { center: true }));
-  P.push(dxPara(s1Part + ' and ' + s2Part, { center: true, sz: 24 }));
+    (cp ? cp.month : dash(14)) + ', ' + (cp ? cp.year : dash(10)), { center: true, sz: 26 }));
+  P.push(dxPara('according to the Rites of the Roman Catholic Church by', { center: true, sz: 23 }));
+  P.push(dxPara(bishopPart, { center: true, sz: 32 }));
+  P.push(dxPara('the sponsors being', { center: true, sz: 23 }));
+  P.push(dxPara(s1Part + ' and ' + s2Part, { center: true, sz: 32 }));
   P.push(dxPara('As appears in the Confirmation Book No. ' + bookPart +
-    ', Page ' + pagePart + ', Line ' + linePart + '.', { center: true, before: 120 }));
-  P.push(dxPara('Date of Issuance: ' + issuedPart, { center: true }));
-  P.push(dxPara('Purpose: ' + esc(cert.purpose || 'For Reference'), { center: true, after: 60 }));
+    ', Page ' + pagePart + ', Line ' + linePart + '.', { center: true, sz: 22, before: 160 }));
+  P.push(dxPara('Date of Issuance: ' + issuedPart, { center: true, sz: 22, before: 40 }));
+  P.push(dxPara('Purpose: ' + esc(cert.purpose || 'For Reference'), { center: true, sz: 22, after: 60 }));
   P.push(dxSigBlock());
 
   var documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
@@ -1768,4 +1786,4 @@ function navigate() {
 })();
 </script>
 </body>
-</html>  
+</html>
