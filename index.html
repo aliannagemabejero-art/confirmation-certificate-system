@@ -1337,18 +1337,20 @@ function renderCertificateHTML(list, cert) {
       ln(458, 'cert-body', 'the sponsors being') +
       ln(476, 'cert-body', val(s1Part) + ' and ' + val(s2Part)) +
       /* 14-17 · registry record + issuance + purpose — spread across
-         the top of the bottom landscape with breathing room */
+         the top of the bottom landscape with breathing room; the
+         issuance/purpose/signature group sits 12pt lower than the
+         book line for a clear separation above it */
       ln(520, 'cert-record',
         'As appears in the Confirmation Book No. ' + val(bookPart) +
         ', Page ' + val(pagePart) + ', Line ' + val(linePart) + '.') +
-      ln(548, 'cert-line cert-record cert-record-block',
+      ln(560, 'cert-line cert-record cert-record-block',
         'Date of Issuance: ' + val(issuedPart)) +
-      ln(574, 'cert-line cert-record cert-record-block',
+      ln(586, 'cert-line cert-record cert-record-block',
         'Purpose: ' + esc(c.purpose || 'For Reference')) +
       /* Parish priest signature — lower right. The blank band above
          the rule is the physical signing area (about 3/4 inch); the
          printed name sits below the line, title under the name. */
-      '<div class="cert-sign" style="top:496pt">' +
+      '<div class="cert-sign" style="top:508pt">' +
         '<div class="cert-sign-space"></div>' +
         '<div class="cert-sign-rule"></div>' +
         '<div class="cert-sign-name">' + (priestPart || '&nbsp;') + '</div>' +
