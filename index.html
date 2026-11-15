@@ -474,11 +474,16 @@ tr.row-new { animation: row-new 1.5s ease-out 1; }
   position: absolute; left: 380pt; width: 196pt;
   text-align: center; line-height: 1.2;
 }
+/* Real signing room: the empty .cert-sign-space band above the rule
+   is where the priest hand-signs; the printed name stays BELOW the
+   line, "Parish Priest" under the name. */
+.cert-sign-space { height: 54pt; }
+.cert-sign-rule { border-top: 0.9pt solid #101418; }
 .cert-sign-name {
   font-size: 11.5pt; text-transform: uppercase;
   letter-spacing: 0.04em; font-weight: 600; white-space: nowrap;
+  margin-top: 4pt;
 }
-.cert-sign-rule { border-top: 0.9pt solid #101418; margin-top: 3pt; }
 .cert-sign-title { font-size: 10.5pt; font-style: italic; margin-top: 3pt; }
 
 /* Clickable certificate rows in the Certificate Workspace. */
@@ -1254,8 +1259,9 @@ function renderCertificateHTML(list, cert) {
      7 baptism church, 8-10 confirmation day/month/year (inherited
      from the list), 11 confirming bishop, 12-13 sponsors, 14-16
      book/page/line, 17 date of issuance. Purpose is fixed text.
-     The parish priest comes from the list and prints ALL CAPS above
-     the signature line. */
+     The parish priest comes from the list and prints ALL CAPS below
+     the signature line, leaving the band above it free for the
+     handwritten signature. */
 
   /* Header text + rule at exact template geometry:
      Divine Mercy Parish          x 195.93  baseline 44.34  ArialMT 24pt  #FF0000
@@ -1339,10 +1345,13 @@ function renderCertificateHTML(list, cert) {
         'Date of Issuance: ' + val(issuedPart)) +
       ln(574, 'cert-line cert-record cert-record-block',
         'Purpose: ' + esc(c.purpose || 'For Reference')) +
-      /* Parish priest signature — lower right, name ALL CAPS above the line */
-      '<div class="cert-sign" style="top:548pt">' +
-        '<div class="cert-sign-name">' + (priestPart || '&nbsp;') + '</div>' +
+      /* Parish priest signature — lower right. The blank band above
+         the rule is the physical signing area (about 3/4 inch); the
+         printed name sits below the line, title under the name. */
+      '<div class="cert-sign" style="top:496pt">' +
+        '<div class="cert-sign-space"></div>' +
         '<div class="cert-sign-rule"></div>' +
+        '<div class="cert-sign-name">' + (priestPart || '&nbsp;') + '</div>' +
         '<div class="cert-sign-title">Parish Priest</div>' +
       '</div>' +
     '</div>';
@@ -1559,14 +1568,17 @@ function docxParts(list, cert) {
   var issuedPart = cert.issuanceDate ? fmtFormalDate(cert.issuanceDate) : dash(28);
   var priestName = priestDisplayName(list).toUpperCase();
 
-  /* Right-hand signature block: name above the rule, title under it. */
+  /* Right-hand signature block: generous empty signing space above
+     the rule, printed name below the line, title under the name —
+     the same order as the certificate paper. */
   function dxSigBlock() {
     var ind = '<w:ind w:left="6480"/>';
     var jc = '<w:jc w:val="center"/>';
-    return '<w:p><w:pPr><w:spacing w:before="480" w:after="40"/>' + ind + jc + '</w:pPr>' +
-      (priestName ? dxRun(priestName, { font: 'Georgia', sz: 22, color: '1B2A4A' }) : '') + '</w:p>' +
+    return '<w:p><w:pPr><w:spacing w:before="480" w:after="0"/>' + ind + jc + '</w:pPr></w:p>' +
       '<w:p><w:pPr>' + ind +
       '<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="1B2A4A"/></w:pBdr></w:pPr></w:p>' +
+      '<w:p><w:pPr><w:spacing w:before="60" w:after="20"/>' + ind + jc + '</w:pPr>' +
+      (priestName ? dxRun(priestName, { font: 'Georgia', sz: 22, color: '1B2A4A' }) : '') + '</w:p>' +
       '<w:p><w:pPr><w:spacing w:after="20"/>' + ind + jc + '</w:pPr>' +
       dxRun('Parish Priest', { font: 'Georgia', italic: true, sz: 20, color: '5D6B7E' }) + '</w:p>';
   }
