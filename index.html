@@ -4,15 +4,14 @@
   ============================================================
   CONFIRMATION CERTIFICATION WORKSPACE — v0.9 (record actions)
   ============================================================
-  BUILD 2026-11-16-d · parish header block moved up as ONE group
+  BUILD 2026-11-16-e · parish block up the FULL 15px (11.25pt) as ONE group
     "Confirmation Certificate" UNTOUCHED: baseline 53.8, ink top exactly
     0.500 inch below the Letter paper edge. DIVINE MERCY PARISH +
     "A Place of Healing & Miracle" + address moved UP TOGETHER by
-    9pt = 12px as one rigid group (baselines 116.5->107.5, 135.6->126.6,
-    150.8->141.8): internal gaps, x positions, fonts, sizes identical.
-    Rule, logos, certificate body untouched; a small visible gap remains
-    between the title and the parish name (~44px).
-    If your copy does NOT contain "2026-11-16-d", you are viewing an older file.
+    11.25pt = exactly 15px total vs the original position (baselines
+    116.5->105.25, 135.6->124.35, 150.8->139.55): internal gaps, x,
+    fonts, sizes identical. Rule, logos, certificate body untouched.
+    If your copy does NOT contain "2026-11-16-e", you are viewing an older file.
   ============================================================
   A self-contained, single-file web application for Divine Mercy
   Parish — one connected workflow:
@@ -1340,18 +1339,18 @@ function renderCertificateHTML(list, cert) {
      template's own line rhythm. The certificate body moved down
      as one rigid block (+45pt) to make room; nothing inside changed.
      Confirmation Certificate  x 306 (centered) baseline 53.8  EB Garamond italic 26pt #000  (ink top exactly 36pt = 0.5in)
-     DIVINE MERCY PARISH       x 306 (centered) baseline 107.5  EB Garamond 700 20pt #000
-     A Place of Healing & Miracle x 218.91  baseline 126.6  Corbel-BI 14pt #000
-     Brgy. Biluso, Silang, ...    x 195.68  baseline 141.8  Corbel 12pt    #000
+     DIVINE MERCY PARISH       x 306 (centered) baseline 105.25  EB Garamond 700 20pt #000
+     A Place of Healing & Miracle x 218.91  baseline 124.35  Corbel-BI 14pt #000
+     Brgy. Biluso, Silang, ...    x 195.68  baseline 139.55  Corbel 12pt    #000
      rule                         x 144..461  y 154.7  black
-     2026-11-16-d: the three parish lines above moved UP together by
-     9pt = 12px as ONE rigid group (title and rule unchanged). */
+     2026-11-16-d/-e: the three parish lines above moved UP together by
+     11.25pt = 15px total as ONE rigid group (title and rule unchanged). */
   var headerSvg =
     '<svg class="tpl-header-svg" viewBox="0 0 612 792" aria-hidden="true">' +
       '<text x="306" y="53.8" text-anchor="middle" font-family="EB Garamond, Georgia, serif" font-style="italic" font-size="26" fill="#000000">Confirmation Certificate</text>' +
-      '<text x="306" y="107.5" text-anchor="middle" font-family="EB Garamond, Georgia, serif" font-weight="700" font-size="20" fill="#000000">DIVINE MERCY PARISH</text>' +
-      '<text x="218.91" y="126.6" font-family="DMP Corbel-BoldItalic, Corbel, sans-serif" font-style="italic" font-size="14" fill="#000000">A Place of Healing &amp; Miracle</text>' +
-      '<text x="195.68" y="141.8" font-family="DMP Corbel, Corbel, sans-serif" font-size="12" fill="#000000">Brgy. Biluso, Silang, Cavite 4118 Philippines</text>' +
+      '<text x="306" y="105.25" text-anchor="middle" font-family="EB Garamond, Georgia, serif" font-weight="700" font-size="20" fill="#000000">DIVINE MERCY PARISH</text>' +
+      '<text x="218.91" y="124.35" font-family="DMP Corbel-BoldItalic, Corbel, sans-serif" font-style="italic" font-size="14" fill="#000000">A Place of Healing &amp; Miracle</text>' +
+      '<text x="195.68" y="139.55" font-family="DMP Corbel, Corbel, sans-serif" font-size="12" fill="#000000">Brgy. Biluso, Silang, Cavite 4118 Philippines</text>' +
       '<line x1="144" y1="154.7" x2="461" y2="154.7" stroke="#000000" stroke-width="0.75"/>' +
     '</svg>';
 
