@@ -4,14 +4,16 @@
   ============================================================
   CONFIRMATION CERTIFICATION WORKSPACE — v0.9 (record actions)
   ============================================================
-  BUILD 2026-11-15-i · header matched to the physical-certificate
-    reference: "Confirmation Certificate" is now the elegant italic
-    EB Garamond serif (17pt, real embedded italic face, not bold,
-    normal tracking); "DIVINE MERCY PARISH" is ALL CAPS bold serif
-    (EB Garamond 700, 23pt, centered, no extra tracking) — slightly
-    larger and heavier than the title, per the reference hierarchy.
-    Subtitle, address, rule, logos, body, print 1:1 unchanged.
-    If your copy does NOT contain "2026-11-15-i", you are viewing an older file.
+  BUILD 2026-11-16-a · header restack: "Confirmation Certificate"
+    enlarged to 26pt elegant italic EB Garamond (the certificate's
+    own embedded italic face, not bold, normal tracking) with its
+    cap top exactly 1in (72pt) below the Letter paper edge;
+    "DIVINE MERCY PARISH" is now 20pt ALL CAPS bold serif —
+    smaller than the title, per the new hierarchy. Subtitle,
+    address and rule follow the parish name; the certificate body
+    moved down +45pt as ONE rigid block (nothing inside changed).
+    Logos, photo, print 1:1, assets.js all unchanged.
+    If your copy does NOT contain "2026-11-16-a", you are viewing an older file.
   ============================================================
   A self-contained, single-file web application for Divine Mercy
   Parish — one connected workflow:
@@ -1328,25 +1330,28 @@ function renderCertificateHTML(list, cert) {
      the signature line (the priest signs on the line), with
      generous space around the name for the handwritten signature. */
 
-  /* Header text + rule at exact template geometry. 2026-11-15-i:
-     header matched to the physical-certificate reference — the
-     document title "Confirmation Certificate" is the elegant
-     italic EB Garamond serif (the certificate's own embedded
-     italic face, 17pt, not bold, normal tracking); the parish
-     name is ALL CAPS bold serif "DIVINE MERCY PARISH" (EB
-     Garamond 700, 23pt, centered, no extra tracking).
-     Confirmation Certificate  x 306 (centered) baseline 24.5  EB Garamond italic 17pt #000
-     DIVINE MERCY PARISH       x 306 (centered) baseline 52.34 EB Garamond 700 23pt #000
-     A Place of Healing & Miracle x 218.91  baseline 71.43  Corbel-BI 14pt #000
-     Brgy. Biluso, Silang, ...    x 195.68  baseline 86.62  Corbel 12pt    #000
-     rule                         x 144..461  y 90.5  black */
+  /* Header text + rule at exact template geometry. 2026-11-16-a:
+     header restacked per the reference — the document title
+     "Confirmation Certificate" is the elegant italic EB Garamond
+     serif (26pt, the certificate's own embedded italic face, not
+     bold, normal tracking) with its cap top exactly 1in (72pt)
+     below the Letter paper edge; the parish name is ALL CAPS bold
+     serif "DIVINE MERCY PARISH" (EB Garamond 700, 20pt — smaller
+     than the title); subtitle, address and rule follow at the
+     template's own line rhythm. The certificate body moved down
+     as one rigid block (+45pt) to make room; nothing inside changed.
+     Confirmation Certificate  x 306 (centered) baseline 89.3  EB Garamond italic 26pt #000  (cap top 72pt = 1in)
+     DIVINE MERCY PARISH       x 306 (centered) baseline 116.5  EB Garamond 700 20pt #000
+     A Place of Healing & Miracle x 218.91  baseline 135.6  Corbel-BI 14pt #000
+     Brgy. Biluso, Silang, ...    x 195.68  baseline 150.8  Corbel 12pt    #000
+     rule                         x 144..461  y 154.7  black */
   var headerSvg =
     '<svg class="tpl-header-svg" viewBox="0 0 612 792" aria-hidden="true">' +
-      '<text x="306" y="24.5" text-anchor="middle" font-family="EB Garamond, Georgia, serif" font-style="italic" font-size="17" fill="#000000">Confirmation Certificate</text>' +
-      '<text x="306" y="52.34" text-anchor="middle" font-family="EB Garamond, Georgia, serif" font-weight="700" font-size="23" fill="#000000">DIVINE MERCY PARISH</text>' +
-      '<text x="218.91" y="71.43" font-family="DMP Corbel-BoldItalic, Corbel, sans-serif" font-style="italic" font-size="14" fill="#000000">A Place of Healing &amp; Miracle</text>' +
-      '<text x="195.68" y="86.62" font-family="DMP Corbel, Corbel, sans-serif" font-size="12" fill="#000000">Brgy. Biluso, Silang, Cavite 4118 Philippines</text>' +
-      '<line x1="144" y1="90.5" x2="461" y2="90.5" stroke="#000000" stroke-width="0.75"/>' +
+      '<text x="306" y="89.3" text-anchor="middle" font-family="EB Garamond, Georgia, serif" font-style="italic" font-size="26" fill="#000000">Confirmation Certificate</text>' +
+      '<text x="306" y="116.5" text-anchor="middle" font-family="EB Garamond, Georgia, serif" font-weight="700" font-size="20" fill="#000000">DIVINE MERCY PARISH</text>' +
+      '<text x="218.91" y="135.6" font-family="DMP Corbel-BoldItalic, Corbel, sans-serif" font-style="italic" font-size="14" fill="#000000">A Place of Healing &amp; Miracle</text>' +
+      '<text x="195.68" y="150.8" font-family="DMP Corbel, Corbel, sans-serif" font-size="12" fill="#000000">Brgy. Biluso, Silang, Cavite 4118 Philippines</text>' +
+      '<line x1="144" y1="154.7" x2="461" y2="154.7" stroke="#000000" stroke-width="0.75"/>' +
     '</svg>';
 
   var c = cert || {};
@@ -1378,56 +1383,59 @@ function renderCertificateHTML(list, cert) {
   }
 
   /* Vertical distribution uses the full Letter page: the block opens
-     high under the parish header, each typed value sits close to its
+     below the restacked header, each typed value sits close to its
      connector, groups are separated by generous gaps, and the record
      block spreads across the top of the bottom landscape. */
-  /* 2026-11-15-g: every body line shifted down +9pt to balance the
-     taller header (title row added above the parish name). */
+  /* 2026-11-15-g shifted every body line +9pt; 2026-11-16-a shifts
+     the whole block a further +45pt (rigid — every internal gap is
+     untouched) so the enlarged title can open 1in below the paper
+     edge. Background art under the new positions was scanned: all
+     near-white, no collisions. */
   var content =
     '<div class="cert-content">' +
       /* 1 · This certifies that + 1 confirmand full name — the name is
          the second-strongest element, after the sacrament title */
-      ln(121, 'cert-lead', 'This certifies that') +
-      ln(145, 'cert-name-script', c.fullName ? esc(c.fullName) : certBlank(300)) +
+      ln(166, 'cert-lead', 'This certifies that') +
+      ln(190, 'cert-name-script', c.fullName ? esc(c.fullName) : certBlank(300)) +
       /* 2-3 · child of father and mother */
-      ln(187, 'cert-body', 'child of') +
-      ln(205, 'cert-body', val(fatherPart) + ' and ' + val(motherPart)) +
+      ln(232, 'cert-body', 'child of') +
+      ln(250, 'cert-body', val(fatherPart) + ' and ' + val(motherPart)) +
       /* 4-7 · baptism day / month / year + church */
-      ln(233, 'cert-body',
+      ln(278, 'cert-body',
         'baptized on the ' + val(bp ? bp.ord : certBlank(26)) + ' day of ' +
         val(bp ? bp.month : certBlank(64)) + ', ' + val(bp ? bp.year : certBlank(38))) +
-      ln(263, 'cert-body', 'in the church of') +
-      ln(281, 'cert-body', val(churchPart)) +
+      ln(308, 'cert-body', 'in the church of') +
+      ln(326, 'cert-body', val(churchPart)) +
       /* 8-10 · received the sacrament on the list's confirmation date */
-      ln(313, 'cert-body', 'received') +
-      ln(333, 'cert-sacrament', 'The Holy Sacrament of Confirmation') +
-      ln(383, 'cert-body',
+      ln(358, 'cert-body', 'received') +
+      ln(378, 'cert-sacrament', 'The Holy Sacrament of Confirmation') +
+      ln(428, 'cert-body',
         'on the ' + val(cp ? cp.ord : certBlank(26)) + ' of ' +
         val(cp ? cp.month : certBlank(64)) + ', ' + val(cp ? cp.year : certBlank(38))) +
       /* 11 · confirming bishop */
-      ln(415, 'cert-body', 'according to the Rites of the Roman Catholic Church by') +
-      ln(433, 'cert-body', 'Most Rev. ' +
+      ln(460, 'cert-body', 'according to the Rites of the Roman Catholic Church by') +
+      ln(478, 'cert-body', 'Most Rev. ' +
         val(c.confirmedBy ? bishopDisplayName(c).replace(/^most\s+rev\.?\s*/i, '') : certBlank(170))) +
       /* 12-13 · sponsors */
-      ln(467, 'cert-body', 'the sponsors being') +
-      ln(485, 'cert-body cert-sponsors', val(s1Part) + ' and ' + val(s2Part)) +
+      ln(512, 'cert-body', 'the sponsors being') +
+      ln(530, 'cert-body cert-sponsors', val(s1Part) + ' and ' + val(s2Part)) +
       /* 14-17 · registry record + issuance + purpose — spread across
          the top of the bottom landscape with breathing room; the
          issuance/purpose/signature group sits 58pt lower than the
          book line for a clear separation above it */
-      ln(529, 'cert-record',
+      ln(574, 'cert-record',
         'As appears in the Confirmation Book No. ' + val(bookPart) +
         ', Page ' + val(pagePart) + ', Line ' + val(linePart) + '.') +
-      ln(587, 'cert-line cert-record cert-record-block',
+      ln(632, 'cert-line cert-record cert-record-block',
         'Date of Issuance: ' + val(issuedPart)) +
-      ln(613, 'cert-line cert-record cert-record-block',
+      ln(658, 'cert-line cert-record cert-record-block',
         'Purpose: ' + esc(c.purpose || 'For Reference')) +
       /* Parish priest signature — lower right. Printed name ABOVE
          the rule (the priest signs on the line), title below the
          line; the taller blank band above the name keeps room for
-         the handwritten signature. Block enlarged + shifted to
-         top:553pt with the rest of the body. */
-      '<div class="cert-sign" style="top:553pt">' +
+         the handwritten signature. Block enlarged; top follows the
+         body shift (598pt). */
+      '<div class="cert-sign" style="top:598pt">' +
         '<div class="cert-sign-space"></div>' +
         '<div class="cert-sign-name">' + (priestPart || '&nbsp;') + '</div>' +
         '<div class="cert-sign-rule"></div>' +
