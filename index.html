@@ -4,14 +4,14 @@
   ============================================================
   CONFIRMATION CERTIFICATION WORKSPACE — v0.9 (record actions)
   ============================================================
-  BUILD 2026-11-15-h · header typography refinement: "CONFIRMATION
-    CERTIFICATE" (Arial caps, 2.2 tracking) became "Confirmation
-    Certificate" — title case, elegant formal serif (EB Garamond
-    17pt, normal tracking, no caps), baseline raised 29.5 -> 27.5pt
-    so ~10px of air separates it from "Divine Mercy Parish" (24pt,
-    black, baseline 52.34 — untouched). Subtitle, address, rule,
-    logos, certificate body, print 1:1 all unchanged.
-    If your copy does NOT contain "2026-11-15-h", you are viewing an older file.
+  BUILD 2026-11-15-i · header matched to the physical-certificate
+    reference: "Confirmation Certificate" is now the elegant italic
+    EB Garamond serif (17pt, real embedded italic face, not bold,
+    normal tracking); "DIVINE MERCY PARISH" is ALL CAPS bold serif
+    (EB Garamond 700, 23pt, centered, no extra tracking) — slightly
+    larger and heavier than the title, per the reference hierarchy.
+    Subtitle, address, rule, logos, body, print 1:1 unchanged.
+    If your copy does NOT contain "2026-11-15-i", you are viewing an older file.
   ============================================================
   A self-contained, single-file web application for Divine Mercy
   Parish — one connected workflow:
@@ -1328,20 +1328,22 @@ function renderCertificateHTML(list, cert) {
      the signature line (the priest signs on the line), with
      generous space around the name for the handwritten signature. */
 
-  /* Header text + rule at exact template geometry. 2026-11-15-h:
-     the document title is "Confirmation Certificate" — title case,
-     elegant formal serif (EB Garamond, the certificate's own body
-     serif), normal tracking, black; baseline 27.5 leaves a ~10px
-     ink gap above the parish name's caps (cap top = 52.34 − 17.2).
-     Confirmation Certificate   x 306 (centered) baseline 27.5  EB Garamond 17pt #000
-     Divine Mercy Parish          x 195.93  baseline 52.34 ArialMT 24pt  #000
+  /* Header text + rule at exact template geometry. 2026-11-15-i:
+     header matched to the physical-certificate reference — the
+     document title "Confirmation Certificate" is the elegant
+     italic EB Garamond serif (the certificate's own embedded
+     italic face, 17pt, not bold, normal tracking); the parish
+     name is ALL CAPS bold serif "DIVINE MERCY PARISH" (EB
+     Garamond 700, 23pt, centered, no extra tracking).
+     Confirmation Certificate  x 306 (centered) baseline 24.5  EB Garamond italic 17pt #000
+     DIVINE MERCY PARISH       x 306 (centered) baseline 52.34 EB Garamond 700 23pt #000
      A Place of Healing & Miracle x 218.91  baseline 71.43  Corbel-BI 14pt #000
      Brgy. Biluso, Silang, ...    x 195.68  baseline 86.62  Corbel 12pt    #000
      rule                         x 144..461  y 90.5  black */
   var headerSvg =
     '<svg class="tpl-header-svg" viewBox="0 0 612 792" aria-hidden="true">' +
-      '<text x="306" y="27.5" text-anchor="middle" font-family="EB Garamond, Georgia, serif" font-size="17" fill="#000000">Confirmation Certificate</text>' +
-      '<text x="195.93" y="52.34" font-family="DMP ArialMT, Arial, sans-serif" font-size="24" fill="#000000">Divine Mercy Parish</text>' +
+      '<text x="306" y="24.5" text-anchor="middle" font-family="EB Garamond, Georgia, serif" font-style="italic" font-size="17" fill="#000000">Confirmation Certificate</text>' +
+      '<text x="306" y="52.34" text-anchor="middle" font-family="EB Garamond, Georgia, serif" font-weight="700" font-size="23" fill="#000000">DIVINE MERCY PARISH</text>' +
       '<text x="218.91" y="71.43" font-family="DMP Corbel-BoldItalic, Corbel, sans-serif" font-style="italic" font-size="14" fill="#000000">A Place of Healing &amp; Miracle</text>' +
       '<text x="195.68" y="86.62" font-family="DMP Corbel, Corbel, sans-serif" font-size="12" fill="#000000">Brgy. Biluso, Silang, Cavite 4118 Philippines</text>' +
       '<line x1="144" y1="90.5" x2="461" y2="90.5" stroke="#000000" stroke-width="0.75"/>' +
