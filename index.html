@@ -4,18 +4,13 @@
   ============================================================
   CONFIRMATION CERTIFICATION WORKSPACE — v0.9 (record actions)
   ============================================================
-  BUILD 2026-11-16-f · header vertical rhythm matched to the spacing-
-    reference photo (IMG_0090.jpg) — SPACING ONLY, typography untouched.
-    "Confirmation Certificate" baseline 53.8 UNTOUCHED (ink top 0.500in).
-    Fonts, sizes, weights, colors, wording, logos, rule (y 154.7) and
-    certificate body: untouched. Measured on the rendered paper (pt):
-    title->parish 30.7 -> 20.0, parish->subtitle 9.5 -> 7.0,
-    subtitle->address 3.4 -> 5.0, address->rule 12.3 -> 24.4 — the rule
-    now carries breathing room on both sides, mirroring the photo's
-    larger gap before "This certifies that". Each line moved by a
-    DIFFERENT amount (no rigid group move): baselines parish
-    105.25->94.55, subtitle 124.35->111.15, address 139.55->127.45.
-    If your copy does NOT contain "2026-11-16-f", you are viewing an older file.
+  BUILD 2026-11-16-g · "The Holy Sacrament of Confirmation" — SIZE ONLY:
+    Great Vibes script 32pt -> 28pt (same font, same wording, same
+    centered position top 378pt; nothing else touched). The Word
+    export mirrors the same -4pt step: 35pt -> 31pt. Header, spacing,
+    logos, all other text, name, dates, print layout, assets.js:
+    unchanged. If your copy does NOT contain "2026-11-16-g", you are
+    viewing an older file.
   ============================================================
   A self-contained, single-file web application for Divine Mercy
   Parish — one connected workflow:
@@ -503,8 +498,9 @@ tr.row-new { animation: row-new 1.5s ease-out 1; }
   text-align: center; line-height: 1.1; white-space: nowrap;
 }
 /* Typographic hierarchy — structural wording stays small and
-   secondary; everything the encoder types is emphasized. The
-   sacrament title remains the strongest element on the paper. */
+   secondary; everything the encoder types is emphasized. The long
+   script sacrament title stays the paper's widest element; since
+   2026-11-16-g it runs at 28pt (was 32pt) for a calmer hierarchy. */
 .cert-body   { font-size: 11.5pt; }
 .cert-value  { font-size: 16pt; font-weight: 600; letter-spacing: 0.015em; }
 .cert-record { font-size: 11pt; }
@@ -518,7 +514,7 @@ tr.row-new { animation: row-new 1.5s ease-out 1; }
 }
 .cert-sacrament {
   font-family: 'Great Vibes', 'Segoe Script', cursive;
-  font-size: 32pt; line-height: 1;
+  font-size: 28pt; line-height: 1;
 }
 .cert-record-block { left: 88pt; width: 280pt; text-align: left; }
 .cert-sign {
@@ -1403,7 +1399,8 @@ function renderCertificateHTML(list, cert) {
   var content =
     '<div class="cert-content">' +
       /* 1 · This certifies that + 1 confirmand full name — the name is
-         the second-strongest element, after the sacrament title */
+         the largest ink on the paper; the sacrament line below stays
+         its widest element (2026-11-16-g size-only step) */
       ln(166, 'cert-lead', 'This certifies that') +
       ln(190, 'cert-name-script', c.fullName ? esc(c.fullName) : certBlank(300)) +
       /* 2-3 · child of father and mother */
@@ -1687,8 +1684,8 @@ function docxParts(list, cert) {
   }
 
   /* Word export mirrors the certificate's typographic hierarchy:
-     structural wording small, typed data larger, the sacrament
-     title the strongest element. */
+     structural wording small, typed data larger; the sacrament
+     title follows the paper's 2026-11-16-g size step (31pt). */
   var P = [];
   P.push(dxPara('This certifies that', { center: true, italic: true, sz: 23, before: 200 }));
   P.push(dxPara(esc(cert.fullName) || dash(30), { center: true, font: 'Great Vibes', sz: 64, after: 100 }));
@@ -1699,7 +1696,7 @@ function docxParts(list, cert) {
   P.push(dxPara('in the church of', { center: true, sz: 23 }));
   P.push(dxPara(churchPart, { center: true, sz: 32 }));
   P.push(dxPara('received', { center: true, sz: 23 }));
-  P.push(dxPara('The Holy Sacrament of Confirmation', { center: true, font: 'Great Vibes', sz: 70, before: 40, after: 60 }));
+  P.push(dxPara('The Holy Sacrament of Confirmation', { center: true, font: 'Great Vibes', sz: 62, before: 40, after: 60 }));
   P.push(dxPara('on the ' + (cp ? cp.ord : dash(8)) + ' of ' +
     (cp ? cp.month : dash(14)) + ', ' + (cp ? cp.year : dash(10)), { center: true, sz: 26 }));
   P.push(dxPara('according to the Rites of the Roman Catholic Church by', { center: true, sz: 23 }));
