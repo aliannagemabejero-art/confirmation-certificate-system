@@ -4,15 +4,18 @@
   ============================================================
   CONFIRMATION CERTIFICATION WORKSPACE — v0.9 (record actions)
   ============================================================
-  BUILD 2026-11-17-c · Header brand logo replaced with the EXACT
-    upper-right crest from the approved certificate template:
-    #brandLogo now renders the template's own crest asset (TPL.crestL
-    — the same image the certificate paper paints in the upper-right
-    corner), unmodified, at the same 40px size and placement as the
-    placeholder crest it replaces. crest() stays only as the fallback
-    for the missing-template-assets edge case. Nothing else changed:
-    paper, wording, modal, export, all behavior. If your copy does
-    NOT contain "2026-11-17-c", you are viewing an older file.
+  BUILD 2026-11-17-d · Delete Confirmation List: every card on the
+    dashboard gets a small trash action in its top row. Clicking it
+    opens a confirmation dialog — "Delete this confirmation list?" —
+    that names the list and warns that ALL confirmand certificates
+    stored inside it will be permanently deleted. Cancel, the
+    backdrop and Escape dismiss with no changes; only pressing
+    Delete removes the list (splice + saveLists). The card is then
+    removed from the dashboard immediately and the stat counts
+    (Total Lists / Total Confirmands / Certificates / lists-bar
+    pill) update in place. Cards, layout, styling, data structure
+    and all other behavior unchanged. If your copy does NOT contain
+    "2026-11-17-d", you are viewing an older file.
   ============================================================
   A self-contained, single-file web application for Divine Mercy
   Parish — one connected workflow:
@@ -210,6 +213,15 @@ a { color: var(--accent-bright); }
 .list-card-top .count-pill { margin-left: auto; }
 .list-arrow { color: var(--muted); display: grid; place-items: center; transition: transform 0.18s ease, color 0.18s ease; }
 .list-card:hover .list-arrow { transform: translateX(3px); color: var(--accent-bright); }
+/* Per-card delete action — small ghost trash button in the top row. */
+.list-del {
+  flex: none; width: 26px; height: 26px; border-radius: 8px; padding: 0;
+  display: grid; place-items: center; cursor: pointer;
+  background: transparent; color: var(--muted); border: 1px solid transparent;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+.list-del:hover { color: var(--danger); background: rgba(220, 38, 38, 0.08); border-color: rgba(220, 38, 38, 0.35); }
+.list-del:focus-visible { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.22); }
 .list-title { font-size: 18.5px; letter-spacing: 0.01em; }
 .list-org { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); margin-top: 5px; }
 .list-date { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--muted); margin-top: 4px; }
@@ -356,6 +368,9 @@ a { color: var(--accent-bright); }
   border-radius: 10px; padding: 11px 13px; margin: 4px 0 18px;
 }
 .modal-hint svg { flex: none; color: var(--accent-bright); margin-top: 2px; }
+/* Delete-list confirmation dialog body text. */
+.delete-warn { font-size: 13.5px; line-height: 1.6; color: var(--muted); margin: 4px 0 18px; }
+.delete-warn strong { color: var(--text); font-weight: 700; }
 .modal-foot { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 22px 20px; border-top: 1px solid var(--border); }
 
 /* ---- 1f2. New Certificate encoding screen -------------------- */
@@ -684,6 +699,21 @@ tr.row-new { animation: row-new 1.5s ease-out 1; }
   </div>
 </div>
 
+<div class="modal-overlay" id="deleteOverlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
+    <div class="modal-head">
+      <h3 id="deleteTitle">Delete this confirmation list?</h3>
+    </div>
+    <div class="modal-body">
+      <p class="delete-warn" id="deleteWarn"></p>
+    </div>
+    <div class="modal-foot">
+      <button type="button" class="btn btn-ghost" id="deleteCancel">Cancel</button>
+      <button type="button" class="btn btn-danger" id="deleteConfirm">Delete</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ============================================================
    3. APPLICATION SCRIPT
@@ -838,10 +868,10 @@ function crest(initials, size, stroke, fill, textColor) {
 }
 
 /* ---- 3.4 SHARED BUILDERS ------------------------------------ */
-function statCard(iconName, label, value) {
+function statCard(iconName, label, value, id) {
   return '<div class="stat-card">' +
     '<span class="stat-chip">' + icon(iconName, 20) + '</span>' +
-    '<div><div class="stat-value">' + value + '</div><div class="stat-label">' + label + '</div></div>' +
+    '<div><div class="stat-value"' + (id ? ' id="' + id + '"' : '') + '>' + value + '</div><div class="stat-label">' + label + '</div></div>' +
   '</div>';
 }
 function listCard(list) {
@@ -852,6 +882,7 @@ function listCard(list) {
       '<span class="list-chip">' + icon('award', 19) + '</span>' +
       '<span class="count-pill">' + s.total + '</span>' +
       '<span class="list-arrow">' + icon('chevron', 18) + '</span>' +
+      '<button type="button" class="list-del" data-del="' + list.id + '" title="Delete this list" aria-label="Delete list: ' + esc(list.name) + '">' + icon('trash', 14) + '</button>' +
     '</div>' +
     '<h3 class="list-title">' + esc(list.name) + '</h3>' +
     '<div class="list-org">' + icon('landmark', 14) + CONFIG.org.name + '</div>' +
@@ -884,13 +915,13 @@ function renderHub() {
     '</div>' +
 
     '<div class="stat-grid">' +
-      statCard('layers', 'Total Lists', lists.length) +
-      statCard('users', 'Total Confirmands', totals.confirmands) +
-      statCard('award', 'Certificates', totals.certificates) +
+      statCard('layers', 'Total Lists', lists.length, 'statLists') +
+      statCard('users', 'Total Confirmands', totals.confirmands, 'statConfirmands') +
+      statCard('award', 'Certificates', totals.certificates, 'statCertificates') +
     '</div>' +
 
     '<div class="lists-bar">' +
-      '<div class="lists-label">Confirmation lists <span class="count-pill">' + lists.length + '</span></div>' +
+      '<div class="lists-label">Confirmation lists <span class="count-pill" id="listsBarCount">' + lists.length + '</span></div>' +
       '<button type="button" class="btn btn-gold" id="addListBtn">' +
         icon('plus', 15) + ' Add another list</button>' +
     '</div>' +
@@ -1044,6 +1075,54 @@ function createList() {
   /* Continue the flow: open the new list's Certificate Workspace,
      where "+ New Certificate" starts the first encoding. */
   location.hash = '#/list/' + list.id;
+}
+
+/* ---- 3.6c DELETE-LIST CONFIRMATION ---------------------------
+   The trash button on each hub card opens this dialog. Deleting is
+   destructive by design: the list's confirmand certificates live
+   INSIDE the list record, so removing the list removes them too —
+   the dialog says so explicitly. Nothing happens until the user
+   presses Delete; Cancel, the backdrop and Escape all dismiss with
+   no changes. On confirm the card is removed from the dashboard
+   immediately and the stat counts update in place (2026-11-17-d). */
+var deleteOverlay = document.getElementById('deleteOverlay');
+var deleteWarn = document.getElementById('deleteWarn');
+var pendingDeleteId = null;
+function openDelete(list) {
+  var n = listStats(list).total;
+  pendingDeleteId = list.id;
+  deleteWarn.innerHTML = 'This will permanently delete <strong>' + esc(list.name) + '</strong>' +
+    (n ? ' along with all <strong>' + n + '</strong> confirmand certificate' + (n === 1 ? '' : 's') + ' stored inside it.'
+       : '. No certificates are stored inside it yet.') +
+    ' This cannot be undone.';
+  deleteOverlay.hidden = false;
+  document.body.style.overflow = 'hidden';
+  document.getElementById('deleteCancel').focus();
+}
+function closeDelete() {
+  deleteOverlay.hidden = true;
+  document.body.style.overflow = '';
+  pendingDeleteId = null;
+}
+function confirmDelete() {
+  var id = pendingDeleteId;
+  closeDelete();
+  if (!id) { return; }
+  lists = lists.filter(function (l) { return l.id !== id; });
+  saveLists();
+  /* Update the dashboard in place: remove the card, refresh counts. */
+  var card = document.querySelector('.list-card[data-id="' + id + '"]');
+  if (card) { card.remove(); }
+  var totals = lists.reduce(function (acc, list) {
+    acc.confirmands += listStats(list).total;
+    acc.certificates += listStats(list).total;
+    return acc;
+  }, { confirmands: 0, certificates: 0 });
+  document.getElementById('statLists').textContent = lists.length;
+  document.getElementById('statConfirmands').textContent = totals.confirmands;
+  document.getElementById('statCertificates').textContent = totals.certificates;
+  document.getElementById('listsBarCount').textContent = lists.length;
+  document.getElementById('hubEmpty').classList.toggle('show', lists.length === 0);
 }
 
 /* ---- 3.6b NEW CERTIFICATE ENCODING SCREEN --------------------
@@ -1932,6 +2011,16 @@ function navigate() {
   /* Show the welcome empty state on first paint (and after search resets). */
   document.getElementById('hubEmpty').classList.toggle('show', lists.length === 0);
   document.getElementById('addListBtn').addEventListener('click', openModal);
+  /* Per-card Delete actions — open the confirmation dialog; the click
+     must not also follow the card's own link (2026-11-17-d). */
+  document.querySelectorAll('.list-del').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var list = lists.filter(function (l) { return l.id === btn.getAttribute('data-del'); })[0];
+      if (list) { openDelete(list); }
+    });
+  });
 }
 
 /* ---- 3.8 INIT ------------------------------------------------ */
@@ -1950,8 +2039,14 @@ function navigate() {
   document.getElementById('modalClose').addEventListener('click', closeModal);
   document.getElementById('modalCancel').addEventListener('click', closeModal);
   overlay.addEventListener('mousedown', function (e) { if (e.target === overlay) { closeModal(); } });
+  /* Delete-list dialog wiring — same dismissal rules as the create
+     modal: Cancel button, backdrop click, Escape (2026-11-17-d). */
+  document.getElementById('deleteCancel').addEventListener('click', closeDelete);
+  document.getElementById('deleteConfirm').addEventListener('click', confirmDelete);
+  deleteOverlay.addEventListener('mousedown', function (e) { if (e.target === deleteOverlay) { closeDelete(); } });
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape' && !overlay.hidden) { closeModal(); }
+    if (e.key === 'Escape' && !deleteOverlay.hidden) { closeDelete(); }
   });
   document.getElementById('createForm').addEventListener('submit', function (e) {
     e.preventDefault();
