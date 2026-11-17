@@ -4,13 +4,16 @@
   ============================================================
   CONFIRMATION CERTIFICATION WORKSPACE — v0.9 (record actions)
   ============================================================
-  BUILD 2026-11-16-g · "The Holy Sacrament of Confirmation" — SIZE ONLY:
-    Great Vibes script 32pt -> 28pt (same font, same wording, same
-    centered position top 378pt; nothing else touched). The Word
-    export mirrors the same -4pt step: 35pt -> 31pt. Header, spacing,
-    logos, all other text, name, dates, print layout, assets.js:
-    unchanged. If your copy does NOT contain "2026-11-16-g", you are
-    viewing an older file.
+  BUILD 2026-11-16-h · Bishop title now FULLY FREE-FORM: the
+    certificate and its Word export print EXACTLY what the
+    Confirmed-by field contains — every hardcoded / auto-prepended
+    "Most Rev." is removed (paper line, export and form label; the
+    field's example placeholder stays as guidance only). Typed
+    "Most Rev. Reynaldo G. Evangelista, DD" displays exactly that;
+    no prefix is ever added. Layout, spacing, fonts, wording, header,
+    logos, sponsors, Parish Priest section, assets.js: unchanged.
+    If your copy does NOT contain "2026-11-16-h", you are viewing
+    an older file.
   ============================================================
   A self-contained, single-file web application for Divine Mercy
   Parish — one connected workflow:
@@ -1077,7 +1080,7 @@ function renderEncode(list, cert) {
             '<div class="ehint">Inherited from this list</div>' +
           '</div>' +
           '<div class="efield span-6">' +
-            '<label for="fConfirmedBy">Confirmed by (Most Rev.)</label>' +
+            '<label for="fConfirmedBy">Confirmed by</label>' +
             '<input type="text" class="ein" id="fConfirmedBy" placeholder="e.g., Most Rev. Gilbert A. Garcia, D.D.">' +
           '</div>' +
           '<div class="efield span-6">' +
@@ -1293,13 +1296,14 @@ function certBlank(width) {
 }
 
 /* Shared display names — the certificate preview and the Word
-   export render the same normalized wording (a "Most Rev."
-   prefix is added when the encoder left it out). */
+   export render the same wording. The bishop's title and name are
+   FREE-FORM (2026-11-16-h): exactly what the Confirmed-by field
+   contains is what prints — the app never adds, removes or
+   rewrites any prefix. */
 function priestDisplayName(list) { return list.priest ? esc(list.priest) : ''; }
 function bishopDisplayName(cert) {
   var raw = (cert.confirmedBy || '').trim();
-  if (!raw) { return ''; }
-  return /^most\s+rev\.?\s*/i.test(raw) ? esc(raw) : 'Most Rev. ' + esc(raw);
+  return raw ? esc(raw) : '';
 }
 
 /* Date helpers for the certificate wording — split an ISO date into
@@ -1418,10 +1422,11 @@ function renderCertificateHTML(list, cert) {
       ln(428, 'cert-body',
         'on the ' + val(cp ? cp.ord : certBlank(26)) + ' of ' +
         val(cp ? cp.month : certBlank(64)) + ', ' + val(cp ? cp.year : certBlank(38))) +
-      /* 11 · confirming bishop */
+      /* 11 · confirming bishop — free-form: the full title and name
+         the encoder typed prints verbatim; nothing is added or
+         stripped (2026-11-16-h) */
       ln(460, 'cert-body', 'according to the Rites of the Roman Catholic Church by') +
-      ln(478, 'cert-body', 'Most Rev. ' +
-        val(c.confirmedBy ? bishopDisplayName(c).replace(/^most\s+rev\.?\s*/i, '') : certBlank(170))) +
+      ln(478, 'cert-body', val(c.confirmedBy && c.confirmedBy.trim() ? bishopDisplayName(c) : certBlank(170))) +
       /* 12-13 · sponsors */
       ln(512, 'cert-body', 'the sponsors being') +
       ln(530, 'cert-body cert-sponsors', val(s1Part) + ' and ' + val(s2Part)) +
@@ -1659,7 +1664,7 @@ function docxParts(list, cert) {
     (cert.fatherName ? esc(cert.fatherName) : dash(24));
   var motherPart = cert.motherName ? esc(cert.motherName) : dash(24);
   var churchPart = cert.baptismChurch ? esc(cert.baptismChurch) : dash(32);
-  var bishopPart = cert.confirmedBy ? esc(bishopDisplayName(cert)) : 'Most Rev. ' + dash(26);
+  var bishopPart = cert.confirmedBy && cert.confirmedBy.trim() ? bishopDisplayName(cert) : dash(26);
   var s1Part = cert.sponsor1 ? esc(cert.sponsor1) : dash(22);
   var s2Part = cert.sponsor2 ? esc(cert.sponsor2) : dash(22);
   var bookPart = cert.bookNo ? esc(cert.bookNo) : dash(8);
