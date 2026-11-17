@@ -4,16 +4,16 @@
   ============================================================
   CONFIRMATION CERTIFICATION WORKSPACE — v0.9 (record actions)
   ============================================================
-  BUILD 2026-11-16-h · Bishop title now FULLY FREE-FORM: the
-    certificate and its Word export print EXACTLY what the
-    Confirmed-by field contains — every hardcoded / auto-prepended
-    "Most Rev." is removed (paper line, export and form label; the
-    field's example placeholder stays as guidance only). Typed
-    "Most Rev. Reynaldo G. Evangelista, DD" displays exactly that;
-    no prefix is ever added. Layout, spacing, fonts, wording, header,
-    logos, sponsors, Parish Priest section, assets.js: unchanged.
-    If your copy does NOT contain "2026-11-16-h", you are viewing
-    an older file.
+  BUILD 2026-11-17-b · Confirmation-date ENTRY in the Create-list
+    modal is now Month -> Day -> Year: three controls (Month select,
+    Day select, Year field) in that exact order, so the entry order
+    no longer depends on the browser locale. Enter walks List name ->
+    Month -> Day -> Year -> Parish priest -> Create List; nothing is
+    created from the date controls. The STORED date is unchanged
+    (ISO YYYY-MM-DD) and the certificate still prints Day -> Month ->
+    Year ("17th day of November, 2026"): wording, layout, export and
+    all other behavior unchanged. If your copy does NOT contain
+    "2026-11-17-b", you are viewing an older file.
   ============================================================
   A self-contained, single-file web application for Divine Mercy
   Parish — one connected workflow:
@@ -334,6 +334,20 @@ a { color: var(--accent-bright); }
 }
 .field input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.22); }
 .field input.invalid { border-color: #E06C6C; }
+/* Confirmation-date row: Month -> Day -> Year, styled exactly like
+   the modal's other inputs (same height, border, focus ring). */
+.field select {
+  height: 44px; font: inherit; color: var(--text); cursor: pointer;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 0 10px; width: auto; min-width: 0;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.field select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.22); }
+.field select.invalid { border-color: #E06C6C; }
+.date-row { display: flex; gap: 8px; }
+.date-row select { flex: 1.5 1 0; }
+.date-row #dateDay { flex: 1 1 0; }
+.date-row #dateYear { flex: 1.1 1 0; padding: 0 10px; }
 .field-error { display: none; font-size: 12.5px; color: var(--danger); margin-top: 6px; }
 .field-error.show { display: block; }
 .modal-hint {
@@ -645,8 +659,12 @@ tr.row-new { animation: row-new 1.5s ease-out 1; }
           <div class="field-error" id="nameError">Please enter a name for this list.</div>
         </div>
         <div class="field">
-          <label for="listDateInput">Confirmation date</label>
-          <input type="date" id="listDateInput">
+          <label for="dateMonth">Confirmation date</label>
+          <div class="date-row">
+            <select id="dateMonth" aria-label="Month"></select>
+            <select id="dateDay" aria-label="Day"></select>
+            <input type="text" id="dateYear" inputmode="numeric" maxlength="4" placeholder="Year" autocomplete="off">
+          </div>
           <div class="field-error" id="dateError">Please choose the confirmation date.</div>
         </div>
         <div class="field">
@@ -935,15 +953,20 @@ function renderList(list) {
 /* ---- 3.6 CREATE-LIST MODAL ---------------------------------- */
 var overlay   = document.getElementById('modalOverlay');
 var nameInput = document.getElementById('listNameInput');
-var dateInput = document.getElementById('listDateInput');
+var dateMonth = document.getElementById('dateMonth');
+var dateDay = document.getElementById('dateDay');
+var dateYear = document.getElementById('dateYear');
 var priestInput = document.getElementById('listPriestInput');
 
 function openModal() {
   nameInput.value = '';
-  dateInput.value = '';
+  dateMonth.value = '';
+  dateYear.value = '';
+  rebuildDateControls();
+  dateDay.value = '';
   priestInput.value = '';
   setError(nameInput, 'nameError', false);
-  setError(dateInput, 'dateError', false);
+  setDateError(false);
   setError(priestInput, 'priestError', false);
   overlay.hidden = false;
   document.body.style.overflow = 'hidden';
@@ -959,13 +982,51 @@ function setError(input, errorId, show) {
   input.classList.toggle('invalid', show);
   document.getElementById(errorId).classList.toggle('show', show);
 }
+/* Confirmation-date entry: Month -> Day -> Year, in that order, so
+   the entry order no longer depends on the browser locale. The three
+   controls compose the SAME ISO date (YYYY-MM-DD) the previous
+   <input type="date"> stored — list records, the hub cards, the
+   encoding screen and the certificate wording are all unchanged.
+   Day options follow the chosen month (28/29/30/31, leap-aware) and
+   reuse MONTHS, the same month names the certificate prints. */
+function rebuildDateControls() {
+  var prevMonth = dateMonth.value;
+  var prevDay = dateDay.value;
+  var y = parseInt(dateYear.value, 10);
+  var mh = '<option value="">Month</option>';
+  for (var i = 1; i <= 12; i++) {
+    mh += '<option value="' + (i < 10 ? '0' + i : i) + '">' + MONTHS[i - 1] + '</option>';
+  }
+  dateMonth.innerHTML = mh;
+  dateMonth.value = prevMonth;
+  var n = 31;
+  if (prevMonth === '02') { n = (y && y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0)) ? 29 : 28; }
+  else if (prevMonth === '04' || prevMonth === '06' || prevMonth === '09' || prevMonth === '11') { n = 30; }
+  var dh = '<option value="">Day</option>';
+  for (var d = 1; d <= n; d++) {
+    dh += '<option value="' + (d < 10 ? '0' + d : d) + '">' + d + '</option>';
+  }
+  dateDay.innerHTML = dh;
+  if (prevDay && +prevDay <= n) { dateDay.value = prevDay; }
+}
+function readDateISO() {
+  var y = dateYear.value.trim();
+  return (dateMonth.value && dateDay.value && /^\d{4}$/.test(y)) ? y + '-' + dateMonth.value + '-' + dateDay.value : '';
+}
+function setDateError(show) {
+  dateMonth.classList.toggle('invalid', show);
+  dateDay.classList.toggle('invalid', show);
+  dateYear.classList.toggle('invalid', show);
+  document.getElementById('dateError').classList.toggle('show', show);
+}
+rebuildDateControls();
 function createList() {
   var name = nameInput.value.trim();
-  var date = dateInput.value;
+  var date = readDateISO();
   var priest = priestInput.value.trim();
   var ok = true;
   if (!name) { setError(nameInput, 'nameError', true); ok = false; }
-  if (!date) { setError(dateInput, 'dateError', true); ok = false; }
+  if (!date) { setDateError(true); ok = false; }
   if (!priest) { setError(priestInput, 'priestError', true); ok = false; }
   if (!ok) { return; }
 
@@ -1889,10 +1950,51 @@ function navigate() {
     e.preventDefault();
     createList();
   });
-  ['listNameInput', 'listDateInput', 'listPriestInput'].forEach(function (id) {
+  /* Enter walks the Create-list form in field order — List name ->
+     Month -> Day -> Year (the Confirmation date, entered in that
+     order) -> Parish priest -> Create List. The Enters inside the
+     date group and on the first two fields only move focus and never
+     create the list; only the final Enter, from the Parish priest
+     field, hands off to the Create List button — it is focused and
+     pressed, running the same validation and save as clicking the
+     button (2026-11-17-b). */
+  document.getElementById('createForm').addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') { return; }
+    if (e.target.id === 'listNameInput') {
+      e.preventDefault();
+      dateMonth.focus();
+    } else if (e.target.id === 'dateMonth') {
+      e.preventDefault();
+      dateDay.focus();
+    } else if (e.target.id === 'dateDay') {
+      e.preventDefault();
+      dateYear.focus();
+    } else if (e.target.id === 'dateYear') {
+      e.preventDefault();
+      priestInput.focus();
+    } else if (e.target.id === 'listPriestInput') {
+      e.preventDefault();
+      var createBtn = document.getElementById('modalCreate');
+      createBtn.focus();
+      createBtn.click();
+    }
+  });
+  ['listNameInput', 'listPriestInput'].forEach(function (id) {
     document.getElementById(id).addEventListener('input', function () {
-      setError(this, this.id === 'listNameInput' ? 'nameError' : this.id === 'listPriestInput' ? 'priestError' : 'dateError', false);
+      setError(this, this.id === 'listNameInput' ? 'nameError' : 'priestError', false);
     });
+  });
+  /* The date controls clear the shared date error; Month and Year
+     also refresh the day options (28/29/30/31). The Year field only
+     accepts digits, up to four. */
+  [dateMonth, dateDay, dateYear].forEach(function (el) {
+    el.addEventListener('change', function () { setDateError(false); });
+    el.addEventListener('input', function () { setDateError(false); });
+  });
+  dateMonth.addEventListener('change', rebuildDateControls);
+  dateYear.addEventListener('input', function () {
+    this.value = this.value.replace(/\D/g, '').slice(0, 4);
+    rebuildDateControls();
   });
 
   if (!location.hash) {
