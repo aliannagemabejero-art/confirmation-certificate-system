@@ -4,16 +4,15 @@
   ============================================================
   CONFIRMATION CERTIFICATION WORKSPACE — v0.9 (record actions)
   ============================================================
-  BUILD 2026-11-17-b · Confirmation-date ENTRY in the Create-list
-    modal is now Month -> Day -> Year: three controls (Month select,
-    Day select, Year field) in that exact order, so the entry order
-    no longer depends on the browser locale. Enter walks List name ->
-    Month -> Day -> Year -> Parish priest -> Create List; nothing is
-    created from the date controls. The STORED date is unchanged
-    (ISO YYYY-MM-DD) and the certificate still prints Day -> Month ->
-    Year ("17th day of November, 2026"): wording, layout, export and
-    all other behavior unchanged. If your copy does NOT contain
-    "2026-11-17-b", you are viewing an older file.
+  BUILD 2026-11-17-c · Header brand logo replaced with the EXACT
+    upper-right crest from the approved certificate template:
+    #brandLogo now renders the template's own crest asset (TPL.crestL
+    — the same image the certificate paper paints in the upper-right
+    corner), unmodified, at the same 40px size and placement as the
+    placeholder crest it replaces. crest() stays only as the fallback
+    for the missing-template-assets edge case. Nothing else changed:
+    paper, wording, modal, export, all behavior. If your copy does
+    NOT contain "2026-11-17-c", you are viewing an older file.
   ============================================================
   A self-contained, single-file web application for Divine Mercy
   Parish — one connected workflow:
@@ -1937,7 +1936,15 @@ function navigate() {
 
 /* ---- 3.8 INIT ------------------------------------------------ */
 (function init() {
-  document.getElementById('brandLogo').innerHTML = crest(CONFIG.org.initials, 40);
+  /* Brand logo = the EXACT image from the upper-right of the approved
+     certificate template: TPL.crestL — the very asset the paper paints
+     in the upper-right corner (the img marked tpl-crest-r, left
+     481.5pt), used unmodified at the same 40px size and placement as
+     the placeholder crest it replaces. crest() remains only as the
+     fallback for the missing-template-assets edge case (2026-11-17-c). */
+  document.getElementById('brandLogo').innerHTML = TPL ?
+    '<img src="' + TPL.crestL + '" alt="Divine Mercy Parish logo" style="height:40px;width:auto;display:block">' :
+    crest(CONFIG.org.initials, 40);
 
   /* Modal wiring — buttons, backdrop, Escape key. */
   document.getElementById('modalClose').addEventListener('click', closeModal);
