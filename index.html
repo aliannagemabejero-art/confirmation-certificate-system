@@ -4,20 +4,24 @@
   ============================================================
   CONFIRMATION CERTIFICATION WORKSPACE — v0.9 (record actions)
   ============================================================
-  BUILD 2026-11-17-g · Export to Word typography now matches the
-    preview exactly: the export EMBEDS the preview's own font files
-    (Great Vibes for the confirmand name and "The Holy Sacrament of
-    Confirmation", EB Garamond Regular + Italic for body, values and
-    the Parish Priest section) as Word's odttf obfuscated font parts
-    with a fontTable — extracted from this file's own @font-face
-    data, so outlines and family names are identical to the preview.
-    Word renders the real preview fonts even when they are not
-    installed — no Arial/Times fallback. The preview declares only
-    weight-normal faces (its bold is faux bold), so Word synthesizes
-    bold the same way. Template, layout, spacing, wording, text
-    positions, sizes, colors and the browser preview are unchanged.
-    If your copy does NOT contain "2026-11-17-g", you are viewing an
-    older file.
+  BUILD 2026-11-18-a · The Baptism Date (certificate encoding form)
+    and the Confirmation Date (create-list dialog) are now simple
+    text inputs typed as MM/DD/YYYY (e.g., 11/25/2026), replacing the
+    native date picker and the Month/Day/Year selects. Entry is
+    strictly validated — month 1-12, a real calendar day for that
+    month and year (leap years included), 4-digit year — with the
+    forms' own error messages; typing clears the error. Both fields
+    store the SAME ISO date (YYYY-MM-DD) the previous controls saved,
+    so nothing else moves: the certificate prints the formal wording
+    ("11/25/2026" → "25th day of November, 2026") exactly as before,
+    the Date of Issuance keeps its native picker, the "Will print
+    as" live hint still shows the formal wording for the Baptism
+    date, editing a saved certificate re-fills MM/DD/YYYY, saved
+    records and the Word export are unchanged, and blank Baptism
+    dates still print a fill-in line. Certificate wording, layout,
+    fonts, spacing, template, form order and all other functionality
+    are unchanged. If your copy does NOT contain "2026-11-18-a", you
+    are viewing an older file.
   ============================================================
   A self-contained, single-file web application for Divine Mercy
   Parish — one connected workflow:
@@ -497,11 +501,37 @@ tr.row-new { animation: row-new 1.5s ease-out 1; }
    edge to edge — there is no smaller canvas placed inside it. All
    template artwork and text live on this one full-size page. */
 .cert-frame {
-  position: relative; width: 8.5in; height: 11in;
+  position: relative;
+  /* Paper-size flexible (2026-11-17-h): the paper follows the selected
+     paper size — Letter default; A4/Legal/Custom arrive as
+     --paperW/--paperH on :root from applyPaperSize(). */
+  width: var(--paperW, 8.5in); height: var(--paperH, 11in);
   background: #FFFFFF; overflow: hidden;
   box-shadow: 0 10px 24px rgba(16, 24, 40, 0.12);
   -webkit-print-color-adjust: exact; print-color-adjust: exact;
 }
+/* The certificate canvas — the ORIGINAL 612x792pt Letter artwork and
+   text, untouched, as ONE unit. A non-Letter paper maps it with a
+   single uniform scale (--certS) plus centering offsets
+   (--certOx/--certOy): never stretched, never cropped, always
+   portrait. Letter is the identity map (scale 1, 0, 0), so the
+   default preview renders exactly as approved. */
+.cert-canvas {
+  position: absolute; left: 0; top: 0; width: 612pt; height: 792pt;
+  transform-origin: top left;
+  transform: translate(var(--certOx, 0pt), var(--certOy, 0pt)) scale(var(--certS, 1));
+}
+/* Paper-size picker — slim row in the preview toolbar. */
+.paper-picker {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 10px 0 0; font-size: 13px; color: #5D6B7E;
+}
+.paper-picker select, .paper-picker input {
+  font: inherit; color: #1F2A3C; background: #FFFFFF;
+  border: 1px solid #D6DCE4; border-radius: 6px; padding: 3px 8px;
+}
+.paper-picker input { width: 6ch; padding: 3px 6px; text-align: right; }
+.paper-custom-hidden { display: none; }
 /* Template images — exact template coordinates (pt) and paint order. */
 .tpl-img { position: absolute; display: block; }
 .tpl-crest-l     { left: 48.8pt;   top: 3.3pt;    width: 71.2pt;  height: 89.1pt; }
@@ -589,7 +619,7 @@ tr.row-new { animation: row-new 1.5s ease-out 1; }
   .export-toast { display: none !important; }
   #app.page-enter > * { animation: none !important; }
   .content {
-    max-width: none !important; width: 8.5in !important;
+    max-width: none !important; width: var(--paperW, 8.5in) !important;
     margin: 0 !important; padding: 0 !important;
   }
   .cert-stage { display: block !important; margin: 0 !important; padding: 0 !important; }
@@ -599,7 +629,7 @@ tr.row-new { animation: row-new 1.5s ease-out 1; }
     transform: none !important; flex: none !important;
   }
   .cert-frame {
-    width: 8.5in !important; height: 11in !important;
+    width: var(--paperW, 8.5in) !important; height: var(--paperH, 11in) !important;
     margin: 0 !important; transform: none !important;
     box-shadow: none !important;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
@@ -675,13 +705,9 @@ tr.row-new { animation: row-new 1.5s ease-out 1; }
           <div class="field-error" id="nameError">Please enter a name for this list.</div>
         </div>
         <div class="field">
-          <label for="dateMonth">Confirmation date</label>
-          <div class="date-row">
-            <select id="dateMonth" aria-label="Month"></select>
-            <select id="dateDay" aria-label="Day"></select>
-            <input type="text" id="dateYear" inputmode="numeric" maxlength="4" placeholder="Year" autocomplete="off">
-          </div>
-          <div class="field-error" id="dateError">Please choose the confirmation date.</div>
+          <label for="dateText">Confirmation date</label>
+          <input type="text" id="dateText" inputmode="numeric" maxlength="10" placeholder="MM/DD/YYYY" autocomplete="off">
+          <div class="field-error" id="dateError">Enter the confirmation date as MM/DD/YYYY (e.g., 11/25/2026).</div>
         </div>
         <div class="field">
           <label for="listPriestInput">Parish priest</label>
@@ -825,6 +851,30 @@ function fmtFormalDate(iso) {
 function todayISO() {
   var d = new Date();
   return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+}
+/* Typed MM/DD/YYYY dates (2026-11-18-a): the list's Confirmation
+   date and the certificate's Baptism date are simple text inputs in
+   this exact format. parseMDY is strict — month 1-12, a real
+   calendar day for that month and year, 4-digit year (new Date
+   normalizes overflow like Feb 30, so the round-trip catches it) —
+   and returns the SAME ISO (YYYY-MM-DD) the previous pickers stored,
+   so list records, hub cards, the encoding screen, the Word export
+   and the certificate wording are all unchanged: "11/25/2026" prints
+   as "25th day of November, 2026". isoToMDY is the display form for
+   editing a stored date. */
+function parseMDY(s) {
+  var m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(s || '').trim());
+  if (!m) { return null; }
+  var mo = +m[1], d = +m[2], y = +m[3];
+  if (mo < 1 || mo > 12) { return null; }
+  var dt = new Date(y, mo - 1, d);
+  if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) { return null; }
+  return y + '-' + ('0' + mo).slice(-2) + '-' + ('0' + d).slice(-2);
+}
+function isoToMDY(iso) {
+  var p = String(iso || '').split('-');
+  if (p.length !== 3 || !+p[0] || +p[1] < 1 || +p[1] > 12 || +p[2] < 1 || +p[2] > 31) { return ''; }
+  return ('0' + +p[1]).slice(-2) + '/' + ('0' + +p[2]).slice(-2) + '/' + p[0];
 }
 /* Escape user-entered text before it goes into any HTML string. */
 function esc(s) {
@@ -985,17 +1035,12 @@ function renderList(list) {
 /* ---- 3.6 CREATE-LIST MODAL ---------------------------------- */
 var overlay   = document.getElementById('modalOverlay');
 var nameInput = document.getElementById('listNameInput');
-var dateMonth = document.getElementById('dateMonth');
-var dateDay = document.getElementById('dateDay');
-var dateYear = document.getElementById('dateYear');
+var dateText  = document.getElementById('dateText');
 var priestInput = document.getElementById('listPriestInput');
 
 function openModal() {
   nameInput.value = '';
-  dateMonth.value = '';
-  dateYear.value = '';
-  rebuildDateControls();
-  dateDay.value = '';
+  dateText.value = '';
   priestInput.value = '';
   setError(nameInput, 'nameError', false);
   setDateError(false);
@@ -1014,44 +1059,18 @@ function setError(input, errorId, show) {
   input.classList.toggle('invalid', show);
   document.getElementById(errorId).classList.toggle('show', show);
 }
-/* Confirmation-date entry: Month -> Day -> Year, in that order, so
-   the entry order no longer depends on the browser locale. The three
-   controls compose the SAME ISO date (YYYY-MM-DD) the previous
-   <input type="date"> stored — list records, the hub cards, the
-   encoding screen and the certificate wording are all unchanged.
-   Day options follow the chosen month (28/29/30/31, leap-aware) and
-   reuse MONTHS, the same month names the certificate prints. */
-function rebuildDateControls() {
-  var prevMonth = dateMonth.value;
-  var prevDay = dateDay.value;
-  var y = parseInt(dateYear.value, 10);
-  var mh = '<option value="">Month</option>';
-  for (var i = 1; i <= 12; i++) {
-    mh += '<option value="' + (i < 10 ? '0' + i : i) + '">' + MONTHS[i - 1] + '</option>';
-  }
-  dateMonth.innerHTML = mh;
-  dateMonth.value = prevMonth;
-  var n = 31;
-  if (prevMonth === '02') { n = (y && y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0)) ? 29 : 28; }
-  else if (prevMonth === '04' || prevMonth === '06' || prevMonth === '09' || prevMonth === '11') { n = 30; }
-  var dh = '<option value="">Day</option>';
-  for (var d = 1; d <= n; d++) {
-    dh += '<option value="' + (d < 10 ? '0' + d : d) + '">' + d + '</option>';
-  }
-  dateDay.innerHTML = dh;
-  if (prevDay && +prevDay <= n) { dateDay.value = prevDay; }
-}
+/* Confirmation-date entry (2026-11-18-a): one typed MM/DD/YYYY text
+   field, strictly validated (real calendar date, 4-digit year). It
+   stores the SAME ISO date (YYYY-MM-DD) the previous Month/Day/Year
+   pickers composed — list records, the hub cards, the encoding
+   screen and the certificate wording are all unchanged. */
 function readDateISO() {
-  var y = dateYear.value.trim();
-  return (dateMonth.value && dateDay.value && /^\d{4}$/.test(y)) ? y + '-' + dateMonth.value + '-' + dateDay.value : '';
+  return parseMDY(dateText.value) || '';
 }
 function setDateError(show) {
-  dateMonth.classList.toggle('invalid', show);
-  dateDay.classList.toggle('invalid', show);
-  dateYear.classList.toggle('invalid', show);
+  dateText.classList.toggle('invalid', show);
   document.getElementById('dateError').classList.toggle('show', show);
 }
-rebuildDateControls();
 function createList() {
   var name = nameInput.value.trim();
   var date = readDateISO();
@@ -1194,7 +1213,8 @@ function renderEncode(list, cert) {
         '<div class="enc-sec-body">' +
           '<div class="efield span-12">' +
             '<label for="fBaptismDate">Baptism date</label>' +
-            '<input type="date" class="ein" id="fBaptismDate">' +
+            '<input type="text" class="ein" id="fBaptismDate" inputmode="numeric" maxlength="10" placeholder="MM/DD/YYYY" autocomplete="off">' +
+            '<div class="field-error" id="eBaptismDate">Enter the baptism date as MM/DD/YYYY (e.g., 11/25/2026), or leave it blank.</div>' +
             '<div class="ehint" id="hBaptismDate" hidden></div>' +
           '</div>' +
           '<div class="efield span-12">' +
@@ -1271,7 +1291,7 @@ function mountEncode(list, cert) {
     father.disabled = !!cert.noFather;
     ef('fFather').value = cert.fatherName || '';
     ef('fMother').value = cert.motherName || '';
-    ef('fBaptismDate').value = cert.baptismDate || '';
+    ef('fBaptismDate').value = cert.baptismDate ? (isoToMDY(cert.baptismDate) || cert.baptismDate) : '';
     ef('fBaptismChurch').value = cert.baptismChurch || '';
     ef('fConfirmedBy').value = cert.confirmedBy || '';
     ef('fSponsor1').value = cert.sponsor1 || '';
@@ -1285,11 +1305,16 @@ function mountEncode(list, cert) {
     ef('fIssuanceDate').value = todayISO();
   }
 
-  /* Date fields preview their formal certificate wording live. */
+  /* Date fields preview their formal certificate wording live. The
+     Baptism date is typed MM/DD/YYYY (parseMDY); the Date of issuance
+     stays a native date input (ISO). Both land on the same formal
+     "25th day of November, 2026" wording (2026-11-18-a). */
   function dateHint(inputId, hintId) {
     var el = ef(inputId), hint = ef(hintId);
     var sync = function () {
-      var f = fmtFormalDate(el.value);
+      var v = el.value.trim();
+      var iso = parseMDY(v) || (/^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '');
+      var f = iso ? fmtFormalDate(iso) : '';
       if (f) { hint.innerHTML = 'Will print as: <strong>' + f + '</strong>'; hint.hidden = false; }
       else { hint.hidden = true; }
     };
@@ -1331,6 +1356,13 @@ function mountEncode(list, cert) {
   ef('fFullName').addEventListener('input', function () {
     this.classList.remove('invalid');
     ef('eFullName').classList.remove('show');
+  });
+
+  /* The typed MM/DD/YYYY baptism date clears its error while the
+     user retypes (same pattern as Full Name). */
+  ef('fBaptismDate').addEventListener('input', function () {
+    this.classList.remove('invalid');
+    ef('eBaptismDate').classList.remove('show');
   });
 
   /* Dirty = any editable field differs from how the form started
@@ -1380,12 +1412,24 @@ function saveCertificate(list, cert) {
     ef('fFullName').focus();
     return;
   }
+  /* Baptism date: typed as MM/DD/YYYY; blank stays allowed (the
+     certificate then prints a fill-in line). Stored as the SAME ISO
+     date the previous native picker saved, so everything downstream
+     — dateParts, fmtFormalDate, the Word export, edit prefill — is
+     unchanged (2026-11-18-a). */
+  var baptismISO = parseMDY(ef('fBaptismDate').value);
+  if (ef('fBaptismDate').value.trim() && !baptismISO) {
+    ef('fBaptismDate').classList.add('invalid');
+    ef('eBaptismDate').classList.add('show');
+    ef('fBaptismDate').focus();
+    return;
+  }
   var data = {
     fullName: name,
     noFather: ef('fNoFather').checked,
     fatherName: ef('fNoFather').checked ? '' : ef('fFather').value.trim(),
     motherName: ef('fMother').value.trim(),
-    baptismDate: ef('fBaptismDate').value,
+    baptismDate: baptismISO || '',
     baptismChurch: ef('fBaptismChurch').value.trim(),
     confirmedBy: ef('fConfirmedBy').value.trim(),
     sponsor1: ef('fSponsor1').value.trim(),
@@ -1596,6 +1640,10 @@ function renderCertificateHTML(list, cert) {
     '</div>';
 
   return '<div class="cert-frame" id="certPaper">' +
+    /* ONE canvas holds the whole certificate (header SVG, template
+       artwork, text layer). Non-Letter papers scale this single
+       element — the certificate itself never reflows. */
+    '<div class="cert-canvas">' +
     headerSvg +
     /* Crest arrangement follows the approved reference exactly:
        multicolor seal LEFT, gold crest RIGHT (box geometry tuned so
@@ -1608,6 +1656,7 @@ function renderCertificateHTML(list, cert) {
     '<img class="tpl-img tpl-title-line" src="' + TPL.titleLine + '" alt="">' +
     '<img class="tpl-img tpl-strap" src="' + TPL.strap + '" alt="">' +
     content +
+    '</div>' +
   '</div>';
 }
 
@@ -1623,6 +1672,7 @@ function renderPreview(list, cert) {
         '<button type="button" class="btn btn-danger" id="prevDeleteBtn">' + icon('trash', 14) + ' Delete</button>' +
         '<button type="button" class="btn btn-gold" id="prevPrintBtn">' + icon('printer', 15) + ' Print</button>' +
       '</div>' +
+      paperPickerHTML() +
     '</div>' +
     '<div class="cert-stage"><div class="cert-scale" id="certScale">' + renderCertificateHTML(list, cert) + '</div></div>';
 }
@@ -1636,6 +1686,11 @@ function mountPreview(list, cert) {
   /* DELETE — confirm first, then remove the one record. */
   ef('prevDeleteBtn').addEventListener('click', function () { deleteCertificate(list, cert); });
   ef('prevPrintBtn').addEventListener('click', function () { window.print(); });
+  /* Paper-size picker — choosing Letter/A4/Legal/Custom (or typing
+     custom dimensions) rescales + recenters the certificate live for
+     the preview, print and the Word export. */
+  mountPaperPicker();
+  applyPaperSize();
 
   /* Screen preview: scale the whole certificate to fill the available
      preview width, so it reads as a full Letter page instead of
@@ -1786,6 +1841,116 @@ function odttf(b64, guidHex) {
   return data;
 }
 
+/* --- Paper size (2026-11-17-h) --------------------------------- */
+/* Letter (default), A4, Legal, or Custom width x height in inches.
+   The certificate is ONE 612x792pt canvas; the selected paper maps it
+   with a single uniform scale s = min(W/612, H/792) and centers it —
+   template artwork and all text scale TOGETHER: never stretched,
+   never cropped, always portrait. Letter is the identity map, so the
+   approved default preview/print/export are untouched. */
+var paperSetting = { id: 'letter', wIn: 8.5, hIn: 11 };
+function loadPaperSetting() {
+  try {
+    var v = JSON.parse(localStorage.getItem('dmp_cc_paper_v1') || '');
+    if (v && (v.id === 'letter' || v.id === 'a4' || v.id === 'legal' || v.id === 'custom')) {
+      paperSetting = { id: v.id, wIn: +v.wIn || 8.5, hIn: +v.hIn || 11 };
+    }
+  } catch (err) { /* storage unavailable — keep the Letter default */ }
+}
+function savePaperSetting() {
+  try { localStorage.setItem('dmp_cc_paper_v1', JSON.stringify(paperSetting)); } catch (err) { }
+}
+/* Resolved paper (pt) + the uniform fit map for the certificate. */
+function currentPaper() {
+  var w, h;
+  if (paperSetting.id === 'a4') { w = 595.2756; h = 841.8898; }
+  else if (paperSetting.id === 'legal') { w = 612; h = 1008; }
+  else if (paperSetting.id === 'custom') {
+    /* Word accepts 1..22in pages; clamp so files stay openable. */
+    w = Math.min(22, Math.max(1, paperSetting.wIn)) * 72;
+    h = Math.min(22, Math.max(1, paperSetting.hIn)) * 72;
+  } else { w = 612; h = 792; }
+  if (!(w >= 72 && h >= 72)) { w = 612; h = 792; }
+  var s = Math.min(w / 612, h / 792);
+  return { id: paperSetting.id, w: w, h: h, s: s, ox: (w - 612 * s) / 2, oy: (h - 792 * s) / 2 };
+}
+/* Push the resolved paper into CSS (paper size + canvas scale +
+   centering) and the print @page rule (literal values — var() is not
+   supported inside @page). */
+function applyPaperSize() {
+  var p = currentPaper();
+  var r = document.documentElement;
+  r.style.setProperty('--paperW', p.w + 'pt');
+  r.style.setProperty('--paperH', p.h + 'pt');
+  r.style.setProperty('--certS', String(p.s));
+  r.style.setProperty('--certOx', p.ox + 'pt');
+  r.style.setProperty('--certOy', p.oy + 'pt');
+  var st = document.getElementById('paperPageRule');
+  if (!st) {
+    st = document.createElement('style');
+    st.id = 'paperPageRule';
+    document.head.appendChild(st);
+  }
+  st.textContent = '@page { size: ' + p.w + 'pt ' + p.h + 'pt; margin: 0; }';
+  if (window.__certFitHandler && document.getElementById('certPaper')) { window.__certFitHandler(); }
+}
+function paperPickerHTML() {
+  function opt(id, label) {
+    return '<option value="' + id + '"' + (paperSetting.id === id ? ' selected' : '') + '>' + label + '</option>';
+  }
+  return '<div class="paper-picker">' +
+    '<label for="paperSelect">Paper size</label>' +
+    '<select id="paperSelect">' +
+      opt('letter', 'Letter — 8.5 × 11 in') +
+      opt('a4', 'A4 — 8.27 × 11.69 in') +
+      opt('legal', 'Legal — 8.5 × 14 in') +
+      opt('custom', 'Custom…') +
+    '</select>' +
+    '<span class="paper-custom' + (paperSetting.id === 'custom' ? '' : ' paper-custom-hidden') + '">' +
+      '<input id="paperWIn" type="number" min="1" max="22" step="0.01" value="' + paperSetting.wIn +
+        '" aria-label="Paper width in inches"> × ' +
+      '<input id="paperHIn" type="number" min="1" max="22" step="0.01" value="' + paperSetting.hIn +
+        '" aria-label="Paper height in inches"> in' +
+    '</span>' +
+  '</div>';
+}
+function mountPaperPicker() {
+  var sel = document.getElementById('paperSelect');
+  if (!sel) { return; }
+  sel.addEventListener('change', function () {
+    paperSetting.id = sel.value;
+    var cbox = document.querySelector('.paper-picker .paper-custom');
+    if (cbox) { cbox.classList.toggle('paper-custom-hidden', sel.value !== 'custom'); }
+    savePaperSetting();
+    applyPaperSize();
+  });
+  ['paperWIn', 'paperHIn'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (!el) { return; }
+    el.addEventListener('input', function () {
+      var v = parseFloat(el.value);
+      if (v >= 1 && v <= 22) {
+        paperSetting[id === 'paperWIn' ? 'wIn' : 'hIn'] = v;
+        savePaperSetting();
+        applyPaperSize();
+      }
+    });
+  });
+}
+
+/* Docx geometry mapping for the selected paper: ONE uniform scale
+   plus centering offsets applied to every text-box coordinate, box
+   size, font size and spacing — text and template scale together.
+   Identity for Letter (scale 1, offsets 0), so the approved export
+   keeps exactly the geometry it has always had. */
+var DXGS = 1, DXGOX = 0, DXGOY = 0;
+function dxX(pt) { return DXGOX + pt * DXGS; }      /* x on the paper  */
+function dxY(pt) { return DXGOY + pt * DXGS; }      /* y on the paper  */
+function dxV(pt) { return pt * DXGS; }              /* lengths/sizes   */
+function dxTw(tw) { return Math.round(tw * DXGS); } /* twip lengths    */
+function dxSz(hp) { return Math.max(2, Math.round(hp * DXGS)); } /* half-pt size */
+function dxR3(v) { return Math.round(v * 1000) / 1000; }
+
 /* --- OOXML paragraphs (Word document.xml) ---------------------- */
 function dxRun(text, o) {
   o = o || {};
@@ -1793,7 +1958,7 @@ function dxRun(text, o) {
     (o.font ? '<w:rFonts w:ascii="' + o.font + '" w:hAnsi="' + o.font + '"/>' : '') +
     (o.bold ? '<w:b/>' : '') + (o.italic ? '<w:i/>' : '') +
     '<w:color w:val="' + (o.color || '1F2A3C') + '"/>' +
-    '<w:sz w:val="' + (o.sz || 22) + '"/><w:szCs w:val="' + (o.sz || 22) + '"/>' +
+    '<w:sz w:val="' + dxSz(o.sz || 22) + '"/><w:szCs w:val="' + dxSz(o.sz || 22) + '"/>' +
     (o.underline ? '<w:u w:val="single"/>' : '') +
     (o.caps ? '<w:caps/>' : '') +
     '</w:rPr><w:t xml:space="preserve">' + text + '</w:t></w:r>';
@@ -1801,10 +1966,12 @@ function dxRun(text, o) {
 function dxPara(text, o) {
   o = o || {};
   return '<w:p><w:pPr>' +
-    '<w:spacing w:before="' + (o.before || 0) + '" w:after="' + (o.after == null ? 120 : o.after) + '"/>' +
+    '<w:spacing w:before="' + dxTw(o.before || 0) + '" w:after="' +
+      dxTw(o.after == null ? 120 : o.after) + '"/>' +
     (o.center ? '<w:jc w:val="center"/>' : '') +
-    (o.rule ? '<w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="' + (o.ruleColor || 'C9A227') + '"/></w:pBdr>' : '') +
-    (o.indent ? '<w:ind w:left="' + o.indent + '" w:right="' + o.indent + '"/>' : '') +
+    (o.rule ? '<w:pBdr><w:bottom w:val="single" w:sz="' + Math.max(1, Math.round(6 * DXGS)) +
+      '" w:space="1" w:color="' + (o.ruleColor || 'C9A227') + '"/></w:pBdr>' : '') +
+    (o.indent ? '<w:ind w:left="' + dxTw(o.indent) + '" w:right="' + dxTw(o.indent) + '"/>' : '') +
     '</w:pPr>' + (text == null ? '' : dxRun(text, o)) + '</w:p>';
 }
 function dxSigCell(name, title) {
@@ -1832,15 +1999,21 @@ function dxSigTable(leftName, rightName) {
    rule are drawn with the page's embedded fonts at the tpl-header-svg
    baselines. The certificate data is NOT baked in — it stays real,
    editable text on top (2026-11-17-e). */
-async function buildTemplatePagePng() {
+async function buildTemplatePagePng(paper) {
   if (!TPL || !TPL.crestR) { throw new Error('Template assets are not loaded'); }
+  var p = paper || currentPaper();
   var S = 250 / 72;                              /* pt -> px at 250 dpi */
-  var W = Math.round(612 * S), H = Math.round(792 * S);
+  var W = Math.round(p.w * S), H = Math.round(p.h * S);
   var cv = document.createElement('canvas');
   cv.width = W; cv.height = H;
   var ctx = cv.getContext('2d');
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, W, H);
+  /* The whole 612x792pt certificate maps onto the selected paper with
+     ONE uniform scale, centered — Letter is the identity (2026-11-17-h). */
+  ctx.save();
+  ctx.translate(p.ox * S, p.oy * S);
+  ctx.scale(p.s, p.s);
   /* The template's own layers — exact stored assets, exact stored
      coordinates (pt), same paint order as the preview paper. */
   var layers = [
@@ -1888,6 +2061,7 @@ async function buildTemplatePagePng() {
   ctx.font = (12 * S) + 'px "DMP Corbel", Corbel, sans-serif';
   ctx.fillText('Brgy. Biluso, Silang, Cavite 4118 Philippines', 195.68 * S, 127.45 * S);
   ctx.fillRect(144 * S, (154.7 - 0.375) * S, (461 - 144) * S, 0.75 * S);
+  ctx.restore();
   var bin = atob(cv.toDataURL('image/png').split(',')[1]);
   var out = new Uint8Array(bin.length);
   for (var i = 0; i < bin.length; i++) { out[i] = bin.charCodeAt(i); }
@@ -1898,7 +2072,7 @@ async function buildTemplatePagePng() {
    the original template as the full-page background plus the same
    wording on top, with the preview's own fonts embedded. (tplPng
    comes from buildTemplatePagePng; fonts from exportDocx.) */
-function docxParts(list, cert, tplPng, fonts) {
+function docxParts(list, cert, tplPng, fonts, paper) {
   var dash = function (n) { return new Array(n + 1).join('_'); };
   var priestName = priestDisplayName(list);
   var bishopName = bishopDisplayName(cert);
@@ -1951,6 +2125,12 @@ function docxParts(list, cert, tplPng, fonts) {
      (2026-11-17-f). */
   var INK = '101418';
   var EMU = 12700;                             /* 1pt = 12700 EMU */
+  /* Selected paper (Letter default): page size and the full-page
+     background extent come from it; every text box maps through
+     dxX/dxY/dxV — one uniform scale + centering (2026-11-17-h). */
+  paper = paper || currentPaper();
+  var pgW = Math.round(paper.w * 20), pgH = Math.round(paper.h * 20);
+  var BGW = Math.round(paper.w * EMU), BGH = Math.round(paper.h * EMU);
   function fxRun(text, sz, o) {
     o = o || {};
     return dxRun(text, {
@@ -1967,7 +2147,10 @@ function docxParts(list, cert, tplPng, fonts) {
   function txBox(yPt, inner, o) {
     o = o || {};
     txZ++; txId++;
-    var xPt = o.x || 0, wPt = o.w || 612, hPt = o.h || 40;
+    /* Map the preview pt onto the selected paper: centering offsets
+       plus ONE uniform scale — Letter is the identity (2026-11-17-h). */
+    var xPt = dxX(o.x || 0), wPt = dxV(o.w || 612), hPt = dxV(o.h || 40);
+    yPt = dxY(yPt);
     var content = '<w:txbxContent>' + inner + '</w:txbxContent>';
     /* Each anchor lives in its own run — a drawing must sit inside
        <w:r> or Word/LibreOffice drop the whole paragraph. */
@@ -1976,16 +2159,16 @@ function docxParts(list, cert, tplPng, fonts) {
       '<wp:anchor distT="0" distB="0" distL="0" distR="0" simplePos="0" relativeHeight="' + txZ +
         '" behindDoc="0" locked="0" layoutInCell="1" allowOverlap="1">' +
       '<wp:simplePos x="0" y="0"/>' +
-      '<wp:positionH relativeFrom="page"><wp:posOffset>' + (xPt * EMU) + '</wp:posOffset></wp:positionH>' +
-      '<wp:positionV relativeFrom="page"><wp:posOffset>' + (yPt * EMU) + '</wp:posOffset></wp:positionV>' +
-      '<wp:extent cx="' + (wPt * EMU) + '" cy="' + (hPt * EMU) + '"/>' +
+      '<wp:positionH relativeFrom="page"><wp:posOffset>' + Math.round(xPt * EMU) + '</wp:posOffset></wp:positionH>' +
+      '<wp:positionV relativeFrom="page"><wp:posOffset>' + Math.round(yPt * EMU) + '</wp:posOffset></wp:positionV>' +
+      '<wp:extent cx="' + Math.round(wPt * EMU) + '" cy="' + Math.round(hPt * EMU) + '"/>' +
       '<wp:effectExtent l="0" t="0" r="0" b="0"/>' +
       '<wp:wrapNone/>' +
-      '<wp:docPr id="' + txId + '" name="Certificate text ' + yPt + 'pt"/>' +
+      '<wp:docPr id="' + txId + '" name="Certificate text ' + dxR3(yPt) + 'pt"/>' +
       '<wp:cNvGraphicFramePr/>' +
       '<a:graphic><a:graphicData uri="http://schemas.microsoft.com/office/word/2010/wordprocessingShape">' +
       '<wps:wsp><wps:cNvSpPr txBox="1"/>' +
-      '<wps:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' + (wPt * EMU) + '" cy="' + (hPt * EMU) +
+      '<wps:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' + Math.round(wPt * EMU) + '" cy="' + Math.round(hPt * EMU) +
         '"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom>' +
       '<a:noFill/><a:ln><a:noFill/></a:ln></wps:spPr>' +
       '<wps:txbx>' + content + '</wps:txbx>' +
@@ -1996,8 +2179,8 @@ function docxParts(list, cert, tplPng, fonts) {
       /* VML fallback — same box, same coordinates, for Word builds
          that predate the 2010 shape format. */
       '<mc:Fallback><w:pict>' +
-      '<v:shape style="position:absolute;margin-left:' + xPt + 'pt;margin-top:' + yPt +
-        'pt;width:' + wPt + 'pt;height:' + hPt + 'pt;z-index:' + txZ +
+      '<v:shape style="position:absolute;margin-left:' + dxR3(xPt) + 'pt;margin-top:' + dxR3(yPt) +
+        'pt;width:' + dxR3(wPt) + 'pt;height:' + dxR3(hPt) + 'pt;z-index:' + txZ +
         ';mso-position-horizontal-relative:page;mso-position-vertical-relative:page" filled="f" stroked="f">' +
       '<v:textbox inset="0pt,0pt,0pt,0pt" style="mso-fit-shape-to-text:t">' + content + '</v:textbox>' +
       '<w10:wrap type="none" anchorx="page" anchory="page"/>' +
@@ -2010,9 +2193,10 @@ function docxParts(list, cert, tplPng, fonts) {
   function txPara(runs, o) {
     o = o || {};
     return '<w:p><w:pPr>' +
-      (o.rule ? '<w:pBdr><w:top w:val="single" w:sz="9" w:space="1" w:color="' + INK + '"/></w:pBdr>' : '') +
-      '<w:spacing w:before="' + (o.before || 0) + '" w:after="' + (o.after || 0) + '"' +
-      (o.line ? ' w:line="' + o.line + '" w:lineRule="exact"' : '') + '/>' +
+      (o.rule ? '<w:pBdr><w:top w:val="single" w:sz="' + Math.max(1, Math.round(9 * DXGS)) +
+        '" w:space="1" w:color="' + INK + '"/></w:pBdr>' : '') +
+      '<w:spacing w:before="' + dxTw(o.before || 0) + '" w:after="' + dxTw(o.after || 0) + '"' +
+      (o.line ? ' w:line="' + dxTw(o.line) + '" w:lineRule="exact"' : '') + '/>' +
       '<w:jc w:val="' + (o.jc || 'center') + '"/></w:pPr>' + runs + '</w:p>';
   }
 
@@ -2024,17 +2208,17 @@ function docxParts(list, cert, tplPng, fonts) {
     '<wp:simplePos x="0" y="0"/>' +
     '<wp:positionH relativeFrom="page"><wp:posOffset>0</wp:posOffset></wp:positionH>' +
     '<wp:positionV relativeFrom="page"><wp:posOffset>0</wp:posOffset></wp:positionV>' +
-    '<wp:extent cx="7772400" cy="10058400"/>' +
+    '<wp:extent cx="' + BGW + '" cy="' + BGH + '"/>' +
     '<wp:effectExtent l="0" t="0" r="0" b="0"/>' +
     '<wp:wrapNone/>' +
-    '<wp:docPr id="1" name="Certificate template" descr="Original certificate template — full Letter page background"/>' +
+    '<wp:docPr id="1" name="Certificate template" descr="Original certificate template — full page background"/>' +
     '<wp:cNvGraphicFramePr/>' +
     '<a:graphic>' +
     '<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">' +
     '<pic:pic>' +
     '<pic:nvPicPr><pic:cNvPr id="1" name="template.png"/><pic:cNvPicPr/></pic:nvPicPr>' +
     '<pic:blipFill><a:blip r:embed="rIdTPL"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>' +
-    '<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="7772400" cy="10058400"/></a:xfrm>' +
+    '<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' + BGW + '" cy="' + BGH + '"/></a:xfrm>' +
     '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>' +
     '</pic:pic></a:graphicData></a:graphic>' +
     '</wp:anchor></w:drawing></w:r></w:p>');
@@ -2096,7 +2280,7 @@ function docxParts(list, cert, tplPng, fonts) {
     ' xmlns:v="urn:schemas-microsoft-com:vml"' +
     ' xmlns:w10="urn:schemas-microsoft-com:office:word"><w:body>' +
     P.join('') +
-    '<w:sectPr><w:pgSz w:w="12240" w:h="15840"/>' +
+    '<w:sectPr><w:pgSz w:w="' + pgW + '" w:h="' + pgH + '"/>' +
     '<w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="0" w:footer="0" w:gutter="0"/></w:sectPr>' +
     '</w:body></w:document>';
   var contentTypes = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
@@ -2182,7 +2366,13 @@ function exportToast(msg, isError) {
 
 async function exportDocx(list, cert) {
   try {
-    var tplPng = await buildTemplatePagePng();
+    /* Selected paper (Letter default) → ONE uniform fit map for the
+       whole certificate: text boxes map through dxX/dxY/dxV, the
+       background PNG is rendered at the paper size with the
+       certificate scaled + centered inside. */
+    var paper = currentPaper();
+    DXGS = paper.s; DXGOX = paper.ox; DXGOY = paper.oy;
+    var tplPng = await buildTemplatePagePng(paper);
     /* Embedded fonts — the EXACT preview faces as odttf parts with
        fixed fontKeys (deterministic GUIDs; the same key obfuscates
        the part and is recorded in fontTable.xml). */
@@ -2197,7 +2387,7 @@ async function exportDocx(list, cert) {
         guid: '{9A8B7C6D-5E4F-3120-A1B2-C3D4E5F60718}',
         data: odttf(DOCX_FONTS_B64.garamondItalic, '9A8B7C6D5E4F3120A1B2C3D4E5F60718') }
     ];
-    var blob = new Blob([zipStore(docxParts(list, cert, tplPng, fonts))],
+    var blob = new Blob([zipStore(docxParts(list, cert, tplPng, fonts, paper))],
       { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
     var name = 'Confirmation_Certificate_' +
       cert.fullName.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').trim() + '.docx';
@@ -2351,25 +2541,18 @@ function navigate() {
     createList();
   });
   /* Enter walks the Create-list form in field order — List name ->
-     Month -> Day -> Year (the Confirmation date, entered in that
-     order) -> Parish priest -> Create List. The Enters inside the
-     date group and on the first two fields only move focus and never
-     create the list; only the final Enter, from the Parish priest
+     Confirmation date (typed MM/DD/YYYY) -> Parish priest -> Create
+     List. Enter on the first two fields only moves focus and never
+     creates the list; only the final Enter, from the Parish priest
      field, hands off to the Create List button — it is focused and
      pressed, running the same validation and save as clicking the
-     button (2026-11-17-b). */
+     button (2026-11-17-b; typed date field 2026-11-18-a). */
   document.getElementById('createForm').addEventListener('keydown', function (e) {
     if (e.key !== 'Enter') { return; }
     if (e.target.id === 'listNameInput') {
       e.preventDefault();
-      dateMonth.focus();
-    } else if (e.target.id === 'dateMonth') {
-      e.preventDefault();
-      dateDay.focus();
-    } else if (e.target.id === 'dateDay') {
-      e.preventDefault();
-      dateYear.focus();
-    } else if (e.target.id === 'dateYear') {
+      dateText.focus();
+    } else if (e.target.id === 'dateText') {
       e.preventDefault();
       priestInput.focus();
     } else if (e.target.id === 'listPriestInput') {
@@ -2384,23 +2567,21 @@ function navigate() {
       setError(this, this.id === 'listNameInput' ? 'nameError' : 'priestError', false);
     });
   });
-  /* The date controls clear the shared date error; Month and Year
-     also refresh the day options (28/29/30/31). The Year field only
-     accepts digits, up to four. */
-  [dateMonth, dateDay, dateYear].forEach(function (el) {
-    el.addEventListener('change', function () { setDateError(false); });
-    el.addEventListener('input', function () { setDateError(false); });
-  });
-  dateMonth.addEventListener('change', rebuildDateControls);
-  dateYear.addEventListener('input', function () {
-    this.value = this.value.replace(/\D/g, '').slice(0, 4);
-    rebuildDateControls();
+  /* The typed date clears the shared date error while the user
+     retypes; only digits and slashes may be entered (MM/DD/YYYY). */
+  dateText.addEventListener('input', function () {
+    setDateError(false);
+    this.value = this.value.replace(/[^\d/]/g, '').slice(0, 10);
   });
 
   if (!location.hash) {
     try { history.replaceState(null, '', '#/workspace'); } catch (err) { /* hashless URL still opens the hub */ }
   }
   window.addEventListener('hashchange', navigate);
+  /* Paper size: restore the saved choice (Letter default) and apply
+     it before the first view renders (declared above the boot). */
+  loadPaperSetting();
+  applyPaperSize();
   navigate();
 })();
 </script>
