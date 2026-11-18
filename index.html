@@ -4,6 +4,19 @@
   ============================================================
   CONFIRMATION CERTIFICATION WORKSPACE — v0.9 (record actions)
   ============================================================
+  BUILD 2026-11-18-c · The Confirmand Information section gains a
+    "No mother listed" checkbox beside Mother's name, matching "No
+    father listed" exactly: checking it disables and clears the
+    field, the record stores noMother, and the certificate (preview,
+    print and Word export) leaves the mother out entirely — the same
+    blank rule as an unencoded name, never "N/A" or "None". The
+    Enter-key field walk routes around a disabled Mother's name,
+    editing a saved certificate re-fills the checkbox state, and the
+    unsaved-changes check counts it. Unchecking re-enables the field
+    for normal entry. Nothing else moves: father behavior, layout,
+    styling, wording and all other functionality are unchanged. If
+    your copy does NOT contain "2026-11-18-c", you are viewing an
+    older file.
   BUILD 2026-11-18-b · Both MM/DD/YYYY date fields (Baptism Date on
     the encoding form, Confirmation Date in the create-list dialog)
     now format themselves while typing: the user types only digits
@@ -18,7 +31,7 @@
     December, 2003") are unchanged. The Date of Issuance keeps its
     native picker; layout, styling, field order and all other
     functionality are unchanged. If your copy does NOT contain
-    "2026-11-18-b", you are viewing an older file.
+    "2026-11-18-c", you are viewing an older file.
   BUILD 2026-11-18-a · The Baptism Date (certificate encoding form)
     and the Confirmation Date (create-list dialog) are now simple
     text inputs typed as MM/DD/YYYY (e.g., 11/25/2026), replacing the
@@ -35,7 +48,7 @@
     records and the Word export are unchanged, and blank Baptism
     dates still print a fill-in line. Certificate wording, layout,
     fonts, spacing, template, form order and all other functionality
-    are unchanged. If your copy does NOT contain "2026-11-18-b", you
+    are unchanged. If your copy does NOT contain "2026-11-18-c", you
     are viewing an older file.
   ============================================================
   A self-contained, single-file web application for Divine Mercy
@@ -784,7 +797,7 @@ var CONFIG = {
      priest: string,       <- the list's Parish Priest
      createdAt: ISO string,
      certificates: [{      <- encoded via the New Certificate screen
-       id, fullName, noFather, fatherName, motherName,
+       id, fullName, noFather, fatherName, noMother, motherName,
        baptismDate, baptismChurch, confirmedBy,
        sponsor1, sponsor2, bookNo, page, line,
        issuanceDate, purpose: 'For Reference', createdAt
@@ -816,7 +829,7 @@ function loadLists() {
         l.certificates = legacy.map(function (r) {
           return {
             id: uid(), fullName: r.name || '',
-            noFather: false, fatherName: '', motherName: '',
+            noFather: false, fatherName: '', noMother: false, motherName: '',
             baptismDate: '', baptismChurch: '', confirmedBy: '',
             sponsor1: '', sponsor2: '', bookNo: '', page: '', line: '',
             issuanceDate: '', purpose: 'For Reference',
@@ -1293,7 +1306,8 @@ function renderEncode(list, cert) {
             '<input type="text" class="ein" id="fFather" placeholder="Father&rsquo;s full name">' +
           '</div>' +
           '<div class="efield span-6">' +
-            '<label for="fMother">Mother&rsquo;s name</label>' +
+            '<div class="efield-label-row"><label for="fMother">Mother&rsquo;s name</label>' +
+              '<label class="echk"><input type="checkbox" id="fNoMother"><span>No mother listed</span></label></div>' +
             '<input type="text" class="ein" id="fMother" placeholder="Mother&rsquo;s full name">' +
           '</div>' +
         '</div>' +
@@ -1377,6 +1391,8 @@ function mountEncode(list, cert) {
   var form = ef('certForm');
   var noFather = ef('fNoFather');
   var father = ef('fFather');
+  var noMother = ef('fNoMother');
+  var mother = ef('fMother');
 
   if (cert) {
     /* Edit mode: every field starts from the saved certificate. */
@@ -1384,6 +1400,8 @@ function mountEncode(list, cert) {
     ef('fNoFather').checked = !!cert.noFather;
     father.disabled = !!cert.noFather;
     ef('fFather').value = cert.fatherName || '';
+    ef('fNoMother').checked = !!cert.noMother;
+    mother.disabled = !!cert.noMother;
     ef('fMother').value = cert.motherName || '';
     ef('fBaptismDate').value = cert.baptismDate ? (isoToMDY(cert.baptismDate) || cert.baptismDate) : '';
     ef('fBaptismChurch').value = cert.baptismChurch || '';
@@ -1429,15 +1447,25 @@ function mountEncode(list, cert) {
     if (noFather.checked) { father.value = ''; }
   });
 
-  /* Enter = next field in certificate order; a disabled Father's
-     Name is skipped; Enter on the last field moves to Save. */
+  /* "No mother listed": disable and clear the field. Nothing is
+     printed in its place — the certificate simply leaves it blank. */
+  noMother.addEventListener('change', function () {
+    mother.disabled = noMother.checked;
+    if (noMother.checked) { mother.value = ''; }
+  });
+
+  /* Enter = next field in certificate order; a disabled Father's or
+     Mother's Name is routed around; Enter on the last field moves to
+     Save. */
   form.addEventListener('keydown', function (e) {
     if (e.key !== 'Enter') { return; }
     var id = e.target.id;
     var i = CERT_FIELDS.indexOf(id);
     var next = null;
     if (id === 'fNoFather') {
-      next = noFather.checked ? 'fMother' : 'fFather';
+      next = noFather.checked ? (noMother.checked ? 'fBaptismDate' : 'fMother') : 'fFather';
+    } else if (id === 'fNoMother') {
+      next = noMother.checked ? 'fBaptismDate' : 'fMother';
     } else if (i !== -1) {
       next = CERT_FIELDS[i + 1] || null;
       if (id === 'fFullName' && noFather.checked) { next = 'fMother'; }
@@ -1468,8 +1496,10 @@ function mountEncode(list, cert) {
   var initial = {};
   CERT_FIELDS.forEach(function (id) { initial[id] = ef(id).value; });
   initial.noFather = noFather.checked;
+  initial.noMother = noMother.checked;
   function formDirty() {
     if (noFather.checked !== initial.noFather) { return true; }
+    if (noMother.checked !== initial.noMother) { return true; }
     for (var k = 0; k < CERT_FIELDS.length; k++) { if (ef(CERT_FIELDS[k]).value !== initial[CERT_FIELDS[k]]) { return true; } }
     return false;
   }
@@ -1526,7 +1556,8 @@ function saveCertificate(list, cert) {
     fullName: name,
     noFather: ef('fNoFather').checked,
     fatherName: ef('fNoFather').checked ? '' : ef('fFather').value.trim(),
-    motherName: ef('fMother').value.trim(),
+    noMother: ef('fNoMother').checked,
+    motherName: ef('fNoMother').checked ? '' : ef('fMother').value.trim(),
     baptismDate: baptismISO || '',
     baptismChurch: ef('fBaptismChurch').value.trim(),
     confirmedBy: ef('fConfirmedBy').value.trim(),
@@ -1555,8 +1586,8 @@ function saveCertificate(list, cert) {
    The certificate uses the parish template from the original
    foundation build — design frozen. Only the encoded data is
    placed into its positions; anything not yet encoded renders
-   as a blank line, and "No father listed" leaves the father out
-   entirely (never "N/A" or "None").                            */
+   as a blank line, and "No father listed" / "No mother listed"
+   leave that parent out entirely (never "N/A" or "None").      */
 
 /* Certificate template assets — the approved blank certificate's
    own images and fonts as data URIs, so the paper is a single
@@ -1654,7 +1685,8 @@ function renderCertificateHTML(list, cert) {
   var cp = dateParts(L.date);                   /* 8-10 confirmation day/month/year */
   var fatherPart = c.noFather ? certBlank(170) :
     (c.fatherName ? esc(c.fatherName) : certBlank(170));
-  var motherPart = c.motherName ? esc(c.motherName) : certBlank(170);
+  var motherPart = c.noMother ? certBlank(170) :
+    (c.motherName ? esc(c.motherName) : certBlank(170));
   var churchPart = c.baptismChurch ? esc(c.baptismChurch) : certBlank(240);
   var s1Part = c.sponsor1 ? esc(c.sponsor1) : certBlank(150);
   var s2Part = c.sponsor2 ? esc(c.sponsor2) : certBlank(150);
@@ -2181,7 +2213,8 @@ function docxParts(list, cert, tplPng, fonts, paper) {
   var cp = dateParts(list.date);
   var fatherPart = cert.noFather ? dash(24) :
     (cert.fatherName ? esc(cert.fatherName) : dash(24));
-  var motherPart = cert.motherName ? esc(cert.motherName) : dash(24);
+  var motherPart = cert.noMother ? dash(24) :
+    (cert.motherName ? esc(cert.motherName) : dash(24));
   var churchPart = cert.baptismChurch ? esc(cert.baptismChurch) : dash(32);
   var bishopPart = cert.confirmedBy && cert.confirmedBy.trim() ? bishopDisplayName(cert) : dash(26);
   var s1Part = cert.sponsor1 ? esc(cert.sponsor1) : dash(22);
