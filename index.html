@@ -4,6 +4,21 @@
   ============================================================
   CONFIRMATION CERTIFICATION WORKSPACE — v0.9 (record actions)
   ============================================================
+  BUILD 2026-11-18-b · Both MM/DD/YYYY date fields (Baptism Date on
+    the encoding form, Confirmation Date in the create-list dialog)
+    now format themselves while typing: the user types only digits
+    and the '/' separators insert automatically — 1 → 1, 12 → 12,
+    1225 → 12/25, 12252003 → 12/25/2003. Pasting "12/25/2003" or
+    "12252003" lands identically, the caret follows the digit being
+    edited (mid-string edits stay in place), and Backspace remains
+    natural — deleting into an auto-inserted '/' removes the digit
+    before it instead of fighting the mask. Save-time validation
+    (real calendar date, leap years, 4-digit year), ISO storage and
+    the certificate's formal wording ("12/25/2003" → "25th day of
+    December, 2003") are unchanged. The Date of Issuance keeps its
+    native picker; layout, styling, field order and all other
+    functionality are unchanged. If your copy does NOT contain
+    "2026-11-18-b", you are viewing an older file.
   BUILD 2026-11-18-a · The Baptism Date (certificate encoding form)
     and the Confirmation Date (create-list dialog) are now simple
     text inputs typed as MM/DD/YYYY (e.g., 11/25/2026), replacing the
@@ -20,7 +35,7 @@
     records and the Word export are unchanged, and blank Baptism
     dates still print a fill-in line. Certificate wording, layout,
     fonts, spacing, template, form order and all other functionality
-    are unchanged. If your copy does NOT contain "2026-11-18-a", you
+    are unchanged. If your copy does NOT contain "2026-11-18-b", you
     are viewing an older file.
   ============================================================
   A self-contained, single-file web application for Divine Mercy
@@ -876,6 +891,85 @@ function isoToMDY(iso) {
   if (p.length !== 3 || !+p[0] || +p[1] < 1 || +p[1] > 12 || +p[2] < 1 || +p[2] > 31) { return ''; }
   return ('0' + +p[1]).slice(-2) + '/' + ('0' + +p[2]).slice(-2) + '/' + p[0];
 }
+/* Auto-formatting for the typed MM/DD/YYYY fields (2026-11-18-b):
+   the user types only digits and the '/' separators insert
+   themselves — "1" -> "1", "12" -> "12", "122" -> "12/2",
+   "1225" -> "12/25", "12252003" -> "12/25/2003". The mask only
+   ever INSERTS separators as a group fills, so a '/' the user
+   types is left alone ("1/5/2026" keeps working) and lazy
+   "12/252026" still lands "12/25/2026". Bulk edits (paste, autofill)
+   are sanitized: foreign characters stripped, doubled '/' collapsed,
+   pure digit strings rendered positionally. Backspace stays natural:
+   native deletion everywhere, and when the caret sits right after a
+   '/' the digit before it is removed instead — the separator never
+   traps the caret. Storage and save-time validation (parseMDY) are
+   unchanged. */
+function maskDateInput(el) {
+  function positional(d) {
+    if (d.length > 4) { return d.slice(0, 2) + '/' + d.slice(2, 4) + '/' + d.slice(4); }
+    if (d.length > 2) { return d.slice(0, 2) + '/' + d.slice(2); }
+    return d;
+  }
+  function caretAfterDigits(v, n) {
+    var seen = 0, i = 0;
+    while (i < v.length && seen < n) {
+      if (v[i] !== '/') { seen++; }
+      i++;
+    }
+    while (i < v.length && v[i] === '/') { i++; }  /* sit right after a fresh '/' */
+    return i;
+  }
+  function apply(anchor) {
+    var v = el.value.replace(/[^\d/]/g, '').replace(/\/{2,}/g, '/').slice(0, 10);
+    if (v.indexOf('/') === -1) { v = positional(v.replace(/\D/g, '').slice(0, 8)); }
+    el.value = v;
+    var c = caretAfterDigits(v, Math.min(anchor, v.replace(/\D/g, '').length));
+    try { el.setSelectionRange(c, c); } catch (err) { /* not focusable */ }
+  }
+  el.addEventListener('input', function (e) {
+    if (e && e.__maskSynthetic) { return; }  /* backspace's own sync pass */
+    var caret = el.selectionStart || 0;
+    var anchor = el.value.slice(0, caret).replace(/\D/g, '').length;
+    /* One digit typed by hand: once its group is full, the next '/'
+       inserts right before this digit. Group position comes from the
+       digits since the last '/' (or the start), capped at two
+       separator insertions (month, day) — the year never gets one. */
+    if (e && e.inputType === 'insertText' && e.data && /^\d$/.test(e.data)) {
+      var before = el.value.slice(0, caret - 1);
+      var slashes = before.split('/').length - 1;
+      var since = before.slice(before.lastIndexOf('/') + 1).replace(/\D/g, '').length + 1;
+      if (slashes <= 1 && since === 3 &&
+          el.value[caret] !== '/' && el.value[caret - 2] !== '/') {
+        el.value = el.value.slice(0, caret - 1) + '/' + el.value.slice(caret - 1);
+        try { el.setSelectionRange(caret + 1, caret + 1); } catch (err) { /* not focusable */ }
+      }
+      return;
+    }
+    apply(anchor);
+  });
+  el.addEventListener('keydown', function (e) {
+    if (e.key !== 'Backspace' || el.selectionStart == null ||
+        el.selectionStart !== el.selectionEnd || el.selectionStart === 0) { return; }
+    var s = el.selectionStart;
+    if (el.value[s - 1] !== '/') { return; }  /* digit before caret: plain native delete */
+    e.preventDefault();
+    if (s >= 2 && /\d/.test(el.value[s - 2])) {
+      /* drop the digit before the '/', keep the separator */
+      el.value = (el.value.slice(0, s - 2) + el.value.slice(s - 1)).replace(/\/{2,}/g, '/');
+      try { el.setSelectionRange(Math.min(s - 2, el.value.length), Math.min(s - 2, el.value.length)); } catch (err) { /* not focusable */ }
+    } else {
+      /* nothing digit-shaped before the '/': just drop the '/' */
+      el.value = (el.value.slice(0, s - 1) + el.value.slice(s)).replace(/\/{2,}/g, '/');
+      try { el.setSelectionRange(Math.min(s - 1, el.value.length), Math.min(s - 1, el.value.length)); } catch (err) { /* not focusable */ }
+    }
+    /* programmatic edits skip the input event — fire one so the
+       error-clearing and the live "Will print as" hint stay in sync
+       (the mask's own input handler ignores this synthetic pass) */
+    var ev = new Event('input', { bubbles: true });
+    ev.__maskSynthetic = true;
+    el.dispatchEvent(ev);
+  });
+}
 /* Escape user-entered text before it goes into any HTML string. */
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
@@ -1321,6 +1415,10 @@ function mountEncode(list, cert) {
     el.addEventListener('input', sync);
     sync();
   }
+  /* Baptism date masks itself while typing: digits only, '/' inserted
+     automatically (2026-11-18-b). Bound BEFORE the hint so the live
+     "Will print as" wording always reads the formatted value. */
+  maskDateInput(ef('fBaptismDate'));
   dateHint('fBaptismDate', 'hBaptismDate');
   dateHint('fIssuanceDate', 'hIssuance');
 
@@ -2568,11 +2666,10 @@ function navigate() {
     });
   });
   /* The typed date clears the shared date error while the user
-     retypes; only digits and slashes may be entered (MM/DD/YYYY). */
-  dateText.addEventListener('input', function () {
-    setDateError(false);
-    this.value = this.value.replace(/[^\d/]/g, '').slice(0, 10);
-  });
+     retypes; maskDateInput formats it as MM/DD/YYYY while typing —
+     digits only, the slashes insert themselves (2026-11-18-b). */
+  dateText.addEventListener('input', function () { setDateError(false); });
+  maskDateInput(dateText);
 
   if (!location.hash) {
     try { history.replaceState(null, '', '#/workspace'); } catch (err) { /* hashless URL still opens the hub */ }
